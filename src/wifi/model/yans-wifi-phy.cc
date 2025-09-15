@@ -1208,8 +1208,11 @@ YansWifiPhy::GetEdThresholdW (void) const
 double
 YansWifiPhy::GetPowerDbm (uint8_t power) const
 {
+    //if (m_txPowerBaseDbm > m_txPowerEndDbm)
+        //NS_LOG_UNCOND(m_txPowerBaseDbm << "\t" << m_txPowerEndDbm);
   NS_ASSERT (m_txPowerBaseDbm <= m_txPowerEndDbm);
   NS_ASSERT (m_nTxPower > 0);
+  //NS_LOG_UNCOND("wifiPhy power_level: " << static_cast<int>(power));
   double dbm;
   if (m_nTxPower > 1)
     {
@@ -1220,6 +1223,7 @@ YansWifiPhy::GetPowerDbm (uint8_t power) const
       NS_ASSERT_MSG (m_txPowerBaseDbm == m_txPowerEndDbm, "cannot have TxPowerEnd != TxPowerStart with TxPowerLevels == 1");
       dbm = m_txPowerBaseDbm;
     }
+  //NS_LOG_UNCOND(dbm);
   return dbm;
 }
 

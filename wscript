@@ -371,6 +371,7 @@ def configure(conf):
         env.append_value('DEFINES', 'NS3_BUILD_PROFILE_DEBUG')
         env.append_value('DEFINES', 'NS3_ASSERT_ENABLE')
         env.append_value('DEFINES', 'NS3_LOG_ENABLE')
+        env.append_value('CXXFLAGS', '-ggdb')
 
     if Options.options.build_profile == 'release':
         env.append_value('DEFINES', 'NS3_BUILD_PROFILE_RELEASE')
@@ -446,7 +447,7 @@ def configure(conf):
                                              "Link flag -Wl,--whole-archive,-Bstatic does not work")
 
     # Enable C++-11 support
-    env.append_value('CXXFLAGS', '-std=c++11')
+    env.append_value('CXXFLAGS', '-std=c++17')
 
     # Set this so that the lists won't be printed at the end of this
     # configure command.

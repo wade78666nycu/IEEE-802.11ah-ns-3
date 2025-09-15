@@ -549,6 +549,7 @@ DcaTxop::NotifyAccessGranted (void)
                                  m_transmissionListener);
       //nrOfTransmissionsDuringRaw++;
       NS_LOG_DEBUG ("tx broadcast");
+      //NS_LOG_UNCOND("Tx Broadcast");
     }
   else
     {

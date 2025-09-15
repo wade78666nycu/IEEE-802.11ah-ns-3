@@ -563,63 +563,41 @@ UdpSocketImpl::DoSendTo (Ptr<Packet> p, Ipv4Address dest, uint16_t port)
         p->AddPacketTag (tag);
       }
   }
-  //
-  // If dest is set to the limited broadcast address (all ones),
-  // convert it to send a copy of the packet out of every 
-  // interface as a subnet-directed broadcast.
-  // Exception:  if the interface has a /32 address, there is no
-  // valid subnet-directed broadcast, so send it as limited broadcast
-  // Note also that some systems will only send limited broadcast packets
-  // out of the "default" interface; here we send it out all interfaces
-  //
-  if (dest.IsBroadcast ())
+  // Note that some systems will only send limited broadcast packets
+    // out of the "default" interface; here we send it out all interfaces
+    if (dest.IsBroadcast())
     {
-      if (!m_allowBroadcast)
+        if (!m_allowBroadcast)
         {
-          m_errno = ERROR_OPNOTSUPP;
-          return -1;
+            m_errno = ERROR_OPNOTSUPP;
+            return -1;
         }
-      NS_LOG_LOGIC ("Limited broadcast start.");
-      for (uint32_t i = 0; i < ipv4->GetNInterfaces (); i++ )
+        NS_LOG_LOGIC("Limited broadcast start.");
+        for (uint32_t i = 0; i < ipv4->GetNInterfaces(); i++)
         {
-          // Get the primary address
-          Ipv4InterfaceAddress iaddr = ipv4->GetAddress (i, 0);
-          Ipv4Address addri = iaddr.GetLocal ();
-          if (addri == Ipv4Address ("127.0.0.1"))
-            continue;
-          // Check if interface-bound socket
-          if (m_boundnetdevice) 
+            // Get the primary address
+            Ipv4InterfaceAddress iaddr = ipv4->GetAddress(i, 0);
+            Ipv4Address addri = iaddr.GetLocal();
+            if (addri == Ipv4Address("127.0.0.1"))
             {
-              if (ipv4->GetNetDevice (i) != m_boundnetdevice)
                 continue;
             }
-          Ipv4Mask maski = iaddr.GetMask ();
-          if (maski == Ipv4Mask::GetOnes ())
+            // Check if interface-bound socket
+            if (m_boundnetdevice)
             {
-              // if the network mask is 255.255.255.255, do not convert dest
-              NS_LOG_LOGIC ("Sending one copy from " << addri << " to " << dest
-                                                     << " (mask is " << maski << ")");
-              m_udp->Send (p->Copy (), addri, dest,
-                           m_endPoint->GetLocalPort (), port);
-              NotifyDataSent (p->GetSize ());
-              NotifySend (GetTxAvailable ());
+                if (ipv4->GetNetDevice(i) != m_boundnetdevice)
+                {
+                    continue;
+                }
             }
-          else
-            {
-              // Convert to subnet-directed broadcast
-              Ipv4Address bcast = addri.GetSubnetDirectedBroadcast (maski);
-              NS_LOG_LOGIC ("Sending one copy from " << addri << " to " << bcast
-                                                     << " (mask is " << maski << ")");
-              m_udp->Send (p->Copy (), addri, bcast,
-                           m_endPoint->GetLocalPort (), port);
-              NotifyDataSent (p->GetSize ());
-              NotifySend (GetTxAvailable ());
-            }
+            NS_LOG_LOGIC("Sending one copy from " << addri << " to " << dest);
+            m_udp->Send(p->Copy(), addri, dest, m_endPoint->GetLocalPort(), port);
+            NotifyDataSent(p->GetSize());
+            NotifySend(GetTxAvailable());
         }
-      NS_LOG_LOGIC ("Limited broadcast end.");
-      return p->GetSize ();
-    }
-  else if (m_endPoint->GetLocalAddress () != Ipv4Address::GetAny ())
+        NS_LOG_LOGIC("Limited broadcast end.");
+        return p->GetSize();
+    } else if (m_endPoint->GetLocalAddress () != Ipv4Address::GetAny ())
     {
       m_udp->Send (p->Copy (), m_endPoint->GetLocalAddress (), dest,
                    m_endPoint->GetLocalPort (), port, 0);

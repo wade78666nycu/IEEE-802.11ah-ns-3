@@ -1,0 +1,453 @@
+#include "recv-packet.h"
+#include "send-packet.h"
+
+#include "ns3/applications-module.h"
+#include "ns3/core-module.h"
+#include "ns3/dsr-module.h"
+#include "ns3/aodv-module.h"
+#include "ns3/internet-module.h"
+#include "ns3/mobility-helper.h"
+#include "ns3/mobility-model.h"
+#include "ns3/network-module.h"
+#include "ns3/yans-wifi-helper.h"
+
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+using namespace ns3;
+
+void
+export_node_position(const NodeContainer& node_container)
+{
+	std::string file_name = "grid_node_position.txt";
+	std::ofstream export_file(file_name);
+	if (export_file.is_open())
+	{
+		const unsigned int container_size = node_container.GetN();
+		export_file << "total nodes: " << container_size << "\n";
+		for (unsigned int i = 0; i < container_size; ++i)
+		{
+			Ptr<Node> node = node_container.Get(i);
+			Vector position = node->GetObject<MobilityModel>()->GetPosition();
+			export_file << "node " << std::setw(2) << std::to_string(i) << ": " << std::setw(4) << position.x << "  "
+						<< std::setw(4) << position.y << "\n";
+		}
+		export_file.close();
+	}
+	return;
+}
+
+void
+export_node_power(const NodeContainer& node_container)
+{
+	std::string file_name = "grid_node_power.txt";
+	std::ofstream export_file(file_name);
+	if (export_file.is_open())
+	{
+		auto get_tx_power = [](Ptr<YansWifiPhy> wifi_phy) {
+			double tx_power = round(wifi_phy->GetTxPowerStart() * 100) / 100;
+			return tx_power;
+		};
+
+		const unsigned int container_size = node_container.GetN();
+		export_file << "total nodes: " << container_size << "\n";
+		for (unsigned int i = 0; i < container_size; ++i)
+		{
+			Ptr<Node> node = node_container.Get(i);
+			const unsigned int total_devices = node->GetNDevices() - 1;
+			export_file << "node " << std::setw(2) << std::to_string(i) << ": ";
+
+			for (unsigned int device_idx = 0; device_idx < total_devices; ++device_idx)
+			{
+				Ptr<WifiNetDevice> wifi_device = DynamicCast<WifiNetDevice>(node->GetDevice(device_idx));
+				Ptr<YansWifiPhy> wifi_phy = DynamicCast<YansWifiPhy>(wifi_device->GetPhy());
+				export_file << std::setw(5) << get_tx_power(wifi_phy) << "  ";
+			}
+			export_file << "\n";
+		}
+		export_file << "output power unit: dBm\n";
+		export_file.close();
+	}
+	return;
+}
+
+// const_num calculation: https://en.wikipedia.org/wiki/Free-space_path_loss
+double
+calculate_refence_loss(const double freq, const double ref_distance)
+{
+	// freq is in MHz and ref_distance is in meters
+	const double const_num = -27.55;
+	return 20 * log10(ref_distance) + 20 * log10(freq) + const_num;
+}
+
+void
+Wifiphy_Setting(YansWifiPhyHelper& wifiPhy,
+				const int freq,
+				const double tx_power_start,
+				const double tx_power_end,
+				const unsigned int tx_power_levels,
+				const double cca_threshold = -92)
+{
+	wifiPhy.Set("ShortGuardEnabled", BooleanValue(false));
+	wifiPhy.Set("ChannelWidth", UintegerValue(1));
+	// NOTE!! EnergyDetectionThreshold is the cca threshold!!
+	// wifiPhy.Set("EnergyDetectionThreshold", DoubleValue());
+	// wifiPhy.Set("CcaMode1Threshold", DoubleValue(-90.0));
+	wifiPhy.Set("EnergyDetectionThreshold", DoubleValue(cca_threshold));
+	wifiPhy.Set("CcaMode1Threshold", DoubleValue(cca_threshold - 1));
+	wifiPhy.Set("TxGain", DoubleValue(0.0));
+	wifiPhy.Set("RxGain", DoubleValue(0.0));
+	wifiPhy.Set("TxPowerStart", DoubleValue(tx_power_start));
+	wifiPhy.Set("TxPowerEnd", DoubleValue(tx_power_end));
+	wifiPhy.Set("TxPowerLevels", UintegerValue(tx_power_levels));
+	wifiPhy.Set("RxNoiseFigure", DoubleValue(7));
+	wifiPhy.Set("LdpcEnabled", BooleanValue(false));
+	wifiPhy.Set("S1g1MfieldEnabled", BooleanValue(true));
+	wifiPhy.Set("Frequency", UintegerValue(freq));
+	return;
+}
+
+void
+WifiChannel_Setting(YansWifiChannelHelper& wifiChannel, const double path_loss_exponent, const double ref_loss)
+{
+	wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
+	wifiChannel.AddPropagationLoss("ns3::LogDistancePropagationLossModel",
+								   "Exponent",
+								   DoubleValue(path_loss_exponent),
+								   "ReferenceLoss",
+								   DoubleValue(ref_loss),
+								   "ReferenceDistance",
+								   DoubleValue(1.0));
+	return;
+}
+
+void
+set_mobility_grid(NodeContainer& node_container, const double width, const double length, const unsigned int grid_width)
+{
+	// assign node's position and movement
+	MobilityHelper mobility;
+	// (MinX, MinY) is the starting point of node0
+	// GridWidth means how many nodes per row or column
+	mobility.SetPositionAllocator("ns3::GridPositionAllocator",
+								  "MinX",
+								  DoubleValue(0.0),
+								  "MinY",
+								  DoubleValue(0.0),
+								  "DeltaX",
+								  DoubleValue(width),
+								  "DeltaY",
+								  DoubleValue(-1 * length),
+								  "GridWidth",
+								  UintegerValue(grid_width),
+								  "LayoutType",
+								  StringValue("RowFirst"));
+	mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
+	mobility.Install(node_container);
+	return;
+}
+
+void
+set_tx_power(float tx_power_dBm, Ptr<Node> node)
+{
+	const float min_tx_power_dBm = 0;
+	NS_ASSERT_MSG(tx_power_dBm >= min_tx_power_dBm, "Invalid tx_power argument");
+
+	Ptr<WifiNetDevice> wifi_device = DynamicCast<WifiNetDevice>(node->GetDevice(0));
+	Ptr<YansWifiPhy> wifi_phy = DynamicCast<YansWifiPhy>(wifi_device->GetPhy());
+
+	wifi_phy->SetTxPowerStart(tx_power_dBm);
+	wifi_phy->SetTxPowerEnd(tx_power_dBm);
+}
+
+NS_LOG_COMPONENT_DEFINE("Lab");
+
+int
+main(int argc, char* argv[])
+{
+	std::string phy_mode("OfdmRate300KbpsBW1MHz");
+	SeedManager::SetSeed(2);
+	LogComponentEnable("Lab", LOG_LEVEL_INFO);
+	LogComponentEnable("SendPacketApp", LOG_LEVEL_INFO);
+	LogComponentEnable("RecvPacketApp", LOG_LEVEL_INFO);
+
+    //NS_LOG_INFO("Lab Start");
+
+	unsigned int num_nodes{25};
+	unsigned int device_num{3};
+	unsigned int send_packet_num{1};
+    unsigned int gradpc_type{2};
+	double cca_threshold{-92.};
+	double default_tx_power{20.0};
+	bool export_node_info{false};
+    bool use_gradpc {false};
+    bool reduce_default_power {false};
+    bool show_log {false};
+    std::string routing_method {"dsr"};
+
+	CommandLine cmd;
+	cmd.AddValue("num_nodes", "total number of nodes", num_nodes);
+    cmd.AddValue("device_num", "number of devices on each node", device_num);
+	cmd.AddValue("send_packet_num", "numbers of packets to send", send_packet_num);
+    cmd.AddValue("gradpc_type", "method of gradpc to use", gradpc_type);
+	cmd.AddValue("export_node_info", "export node's position and power", export_node_info);
+	cmd.AddValue("tx_power", "tx power", default_tx_power);
+    cmd.AddValue("routing_method", "routing method used", routing_method);
+	cmd.AddValue("use_gradpc", "set true to enable grad power control", use_gradpc);
+    cmd.AddValue("show_log", "show log", show_log);
+	cmd.Parse(argc, argv);
+
+	NodeContainer node_container;
+	node_container.Create(num_nodes);
+
+    // grid topology
+	const unsigned int node_per_row = sqrt(num_nodes);
+    const float grid_len {2400.0};
+    const float node_distance = grid_len / node_per_row;
+	set_mobility_grid(node_container, node_distance, node_distance, node_per_row);
+
+	WifiHelper wifi;
+	wifi.SetStandard(WIFI_PHY_STANDARD_80211ah);
+	wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
+								 "DataMode",
+								 StringValue(phy_mode),
+								 "ControlMode",
+								 StringValue(phy_mode));
+	// device_vec stores devices that uses different radios(channels)
+	std::vector<NetDeviceContainer> device_vec(device_num);
+
+	// TxPowerEnd is the maximum power, TxPowerStart is the minimum power
+	const double TxPowerStart{default_tx_power};
+	const double TxPowerEnd = TxPowerStart; // default tx_power 20.0dBm = 100mW
+	const int power_levels{2};
+	double freq{920.0}; // [Mhz] operating frequency
+	const double path_loss_exponent{2.5};
+	const double ref_distance{1.0};
+	const double ref_loss = calculate_refence_loss(freq, ref_distance); // dB
+	for (unsigned int i = 0; i < device_num; ++i)
+	{
+		YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
+		Wifiphy_Setting(wifiPhy, freq, TxPowerStart, TxPowerEnd, power_levels, cca_threshold);
+
+		YansWifiChannelHelper wifiChannel;
+		WifiChannel_Setting(wifiChannel, path_loss_exponent, ref_loss);
+		wifiPhy.SetChannel(wifiChannel.Create());
+
+		// Add an upper mac and set it to adhoc mode
+		S1gWifiMacHelper wifiMac = S1gWifiMacHelper();
+		wifiMac.SetType("ns3::AdhocWifiMac", "S1gSupported", BooleanValue(true));
+		device_vec.at(i) = wifi.Install(wifiPhy, wifiMac, node_container);
+
+		//if (i == 0)
+		//wifiPhy.EnablePcap("lab", device_vec.at(i));
+	}
+
+	// need to install the InternetStackHelper before installing dsr
+	InternetStackHelper internet;
+    if (routing_method == "dsr") {
+        NS_LOG_INFO("dsr");
+	    internet.Install(node_container);
+	    // install dsr
+	    DsrMainHelper dsrMain;
+	    DsrHelper dsr;
+	    //dsr.Set("RreqRetries", UintegerValue(8));
+	    //dsr.Set("MinLifeTime", TimeValue(Seconds(3.0)));
+	    //dsr.Set("NonPropRequestTimeout", TimeValue(MilliSeconds(64.0))); // default is 30ms
+	    //dsr.Set("LinkAckTimeout", TimeValue(MilliSeconds(120.0)));		 // default is 100ms
+	    //dsr.Set("DiscoveryHopLimit", UintegerValue(8));
+	    //dsr.Set("MaxSendBuffLen", UintegerValue(128)); // default is 64
+	    dsrMain.Install(dsr, node_container);
+    } else if(routing_method == "aodv") {
+        NS_LOG_INFO("aodv");
+	    // settings of aodv
+        AodvHelper aodv_helper;
+        aodv_helper.Set("EnableHello", BooleanValue(false));
+        aodv_helper.Set("RreqRateLimit", UintegerValue(12)); // default is 10
+        aodv_helper.Set("ActiveRouteTimeout", TimeValue(Seconds(10.0)));
+        if (use_gradpc) aodv_helper.Set("GradPCAppIdx", IntegerValue(1));
+	    // install the InternetStackHelper and aodv routing
+	    InternetStackHelper internet;
+        internet.SetRoutingHelper(aodv_helper); // has effect on the next Install ()
+	    internet.Install(node_container);
+        if (show_log) {
+            LogComponentEnable("AodvRoutingProtocol", LOG_LEVEL_DEBUG);
+        }
+    } else {
+        NS_ASSERT_MSG(false, "routing method not found!"); 
+    }
+
+	// generate ipv4 network of 10.1.1.0, 10.1.2.0, 10.1.3.0, ...
+	// and assign these ipv4 address to devices in device_vec
+	Ipv4AddressGenerator ipv4_generator;
+	ipv4_generator.Init("10.1.1.0", "255.255.255.0");
+	std::vector<Ipv4InterfaceContainer> interface_vec;
+	for (auto devices : device_vec)
+	{
+		const Ipv4Mask mask = "255.255.255.0";
+		Ipv4AddressHelper ipv4;
+		ipv4.SetBase(ipv4_generator.GetNetwork(mask), mask);
+		interface_vec.emplace_back(ipv4.Assign(devices));
+		ipv4_generator.NextNetwork(mask);
+	}
+
+	const unsigned int max_packet_num_per_round = 300;
+	const unsigned int packet_size{1024}; // bytes
+
+    std::vector<unsigned int> src_node_vec;
+    std::vector<unsigned int> dst_node_vec;
+	for (int i{}; i < node_per_row; ++i) {
+        src_node_vec.emplace_back(node_per_row + i);
+        dst_node_vec.emplace_back(num_nodes - (2 * node_per_row) + i);
+    }
+
+	const unsigned int src_port_num = 9;
+	const unsigned int dst_port_num = 80;
+	// some checking before simulation
+	NS_ASSERT_MSG(src_node_vec.size() == dst_node_vec.size(), "src_node_vec and dst_node_vec have unmatch elements.");
+	NS_ASSERT_MSG(*max_element(src_node_vec.begin(), src_node_vec.end()) < num_nodes,
+				  "invalid source node id in src_node_vec.");
+	NS_ASSERT_MSG(*max_element(dst_node_vec.begin(), dst_node_vec.end()) < num_nodes,
+				  "invalid destination node id in dst_node_vec.");
+
+
+	// Simulation settings
+	Time total_simulation_time = Seconds(60); // [second]
+	const DataRate data_rate("300Kbps");		 // bps: bits per second
+	Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+
+	Time hello_beacon_start_time = Seconds(0);
+	Time hello_beacon_stop_time = Seconds(0);
+	Time grad_pc_start_time = Seconds(0);
+	Time grad_pc_stop_time = Seconds(0);
+    if (use_gradpc) {
+        hello_beacon_start_time = Seconds(1.0); // [second]
+        hello_beacon_stop_time = Seconds(10.0); // [second]
+        grad_pc_start_time = Seconds(11.0);	 // [second]
+        grad_pc_stop_time = Seconds(11.5);		 // [second]
+        total_simulation_time += grad_pc_stop_time + Seconds(1);
+
+	    Time hello_interval = MilliSeconds(180.0); // milliseconds
+        const float extra_tx_distance{80.0};
+
+		std::vector<short> gradPC_func_vec;
+        GradPC_App::GradPC_type func_type;
+        if (gradpc_type == 1) {
+            func_type = GradPC_App::GradPC_type::torque;
+		    NS_LOG_INFO("GradPC torque");
+        } else if (gradpc_type == 2) {
+            func_type = GradPC_App::GradPC_type::proportional;
+		    NS_LOG_INFO("GradPC proportional");
+        } else if (gradpc_type == 3) {
+            func_type = GradPC_App::GradPC_type::logarithmic;
+		    NS_LOG_INFO("GradPC logarithmic");
+        } else {
+            NS_ASSERT_MSG(false, "Not a valid gradpc_type option");
+        }
+        for (int i {1}; i <= device_num; ++i) {
+            gradPC_func_vec.emplace_back(static_cast<short>(func_type));
+        }
+
+		for (unsigned int i {}; i < num_nodes; ++i)
+		{
+			Ptr<Node> node = node_container.Get(i);
+
+			// Install Hello_beacon_App on each node
+			Ptr<Hello_beacon_App> hello_beacon_app = CreateObject<Hello_beacon_App>();
+			hello_beacon_app->set_data_rate(data_rate);
+			hello_beacon_app->set_hello_interval(hello_interval);
+			const unsigned int max_backoff_slot = 32;
+			const unsigned int min_backoff_slot = 0;
+			hello_beacon_app->set_backoff_limit(max_backoff_slot, min_backoff_slot);
+			hello_beacon_app->set_backoff_slot_time(Time("4ms"));
+			// hello_beacon_app->enable_print_neighbor = true;
+
+			hello_beacon_app->SetStartTime(hello_beacon_start_time);
+			hello_beacon_app->SetStopTime(hello_beacon_stop_time);
+			node->AddApplication(hello_beacon_app);
+
+			// Install GradPC_App on each node
+			Ptr<GradPC_App> grad_pc_app = CreateObject<GradPC_App>();
+			grad_pc_app->set_gradPC_func(gradPC_func_vec);
+			//grad_pc_app->m_print_neighbor_list = true;
+            grad_pc_app->set_extra_tx_distance(extra_tx_distance);
+            //if (change_default_power) grad_pc_app->set_change_default_power();
+			grad_pc_app->SetStartTime(grad_pc_start_time);
+			grad_pc_app->SetStopTime(grad_pc_stop_time);
+			node->AddApplication(grad_pc_app);
+		}
+    } else {
+        NS_LOG_INFO("default with " << device_num << " devices");
+    }
+	
+	Time recv_pkt_start_time = (use_gradpc) ? grad_pc_stop_time + Seconds(1) : Seconds(0.01);
+	Time recv_pkt_end_time = total_simulation_time - Seconds(1);
+	Time send_pkt_end_time = total_simulation_time - Seconds(2);
+	double min_send_pkt_start_time = (recv_pkt_start_time).GetSeconds();
+	double max_send_pkt_start_time = (recv_pkt_start_time + MilliSeconds(5.0)).GetSeconds();
+	for (unsigned int i = 0; i < src_node_vec.size(); ++i)
+	{
+		Ptr<Node> src_node = node_container.Get(src_node_vec[i]);
+		Ptr<Ipv4> src_ipv4 = src_node->GetObject<Ipv4>();
+		Ptr<Node> dst_node = node_container.Get(dst_node_vec[i]);
+		Ptr<Ipv4> dst_ipv4 = dst_node->GetObject<Ipv4>();
+
+		// Install SendPacketApp on each source node
+		Ptr<SendPacketApp> send_pkt_app = CreateObject<SendPacketApp>();
+		send_pkt_app->Setup(dst_ipv4, src_port_num, dst_port_num, packet_size, send_packet_num, data_rate);
+		send_pkt_app->Set_max_packet_num_per_round(max_packet_num_per_round);
+		send_pkt_app->m_multi_channel = true;
+		Time send_pkt_start_time = Seconds(uv->GetValue(min_send_pkt_start_time, max_send_pkt_start_time));
+		// NS_LOG_INFO("[node " << src_node->GetId()
+		//           << "] send_pkt_start_time: " << send_pkt_start_time.As(Time::MS));
+		send_pkt_app->SetStartTime(send_pkt_start_time);
+		send_pkt_app->SetStopTime(send_pkt_end_time);
+		src_node->AddApplication(send_pkt_app);
+	}
+
+	for (const uint32_t dst_node_id : dst_node_vec)
+	{
+		Ptr<Node> dst_node = node_container.Get(dst_node_id);
+		// Install RecvPacketApp on each destination node
+		Ptr<RecvPacketApp> recv_pkt_app = CreateObject<RecvPacketApp>(dst_port_num);
+		recv_pkt_app->SetStartTime(recv_pkt_start_time);
+		recv_pkt_app->SetStopTime(recv_pkt_end_time);
+		dst_node->AddApplication(recv_pkt_app);
+	}
+
+	// print source / destination node pair
+    /*
+	for (unsigned int i = 1; i < src_node_vec.size() - 1; ++i)
+	{
+		NS_LOG_INFO("source node: " << std::setw(3) << src_node_vec[i] << " ---> destination node: " << std::setw(3)
+									<< dst_node_vec[i]);
+	}
+	//*/
+
+	// Start simulation
+	Simulator::Stop(total_simulation_time);
+	Simulator::Run();
+
+	// export node_position and node_power to plot lab result
+	if (export_node_info)
+	{
+		export_node_position(node_container);
+		export_node_power(node_container);
+	}
+
+	unsigned long total_recv_packets = 0;
+	for (int i{1}; i < dst_node_vec.size() - 1; ++i)
+	{
+        int node_id = dst_node_vec[i];
+		Ptr<Node> node = node_container.Get(node_id);
+		// recv_pkt_app is the last application
+		// may need to change if more applications are added!!
+		const int recv_pkt_app_id = node->GetNApplications() - 1;
+		total_recv_packets +=
+			DynamicCast<RecvPacketApp>(node->GetApplication(recv_pkt_app_id))->get_total_recv_packet();
+	}
+
+	Simulator::Destroy();
+
+	NS_LOG_INFO("Total received packets: " << total_recv_packets);
+    //NS_LOG_INFO("Lab End");
+	return 0;
+}

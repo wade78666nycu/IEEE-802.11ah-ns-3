@@ -112,6 +112,18 @@ Ipv6Address Ipv6Header::GetDestinationAddress () const
   return m_destinationAddress;
 }
 
+Ipv6Address
+Ipv6Header::GetDestination() const
+{
+    return m_destinationAddress;
+}
+
+Ipv6Address
+Ipv6Header::GetSource() const
+{
+    return m_sourceAddress;
+}
+
 TypeId Ipv6Header::GetTypeId (void)
 {
   static TypeId tid = TypeId ("ns3::Ipv6Header")
