@@ -1,4 +1,4 @@
-# project ns (3-dev) configured on Fri May  9 11:52:13 2025 by
+# project ns (3-dev) configured on Mon Mar  9 17:06:47 2026 by
 # waf 1.8.19 (abi 98, python 20712f0 on linux2)
 # using ./waf configure
 #
@@ -10,7 +10,7 @@ Setting out to
 /home/wade/ah-lab/build
 ----------------------------------------
 Checking for 'gcc' (C compiler)
-find program=['gcc', 'cc'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='CC' -> ['/usr/bin/gcc']
+find program=['gcc', 'cc'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='CC' -> ['/usr/bin/gcc']
 ['/usr/bin/gcc', '-dM', '-E', '-']
 out: #define __SSP_STRONG__ 3
 #define __DBL_MIN_EXP__ (-1021)
@@ -380,14 +380,14 @@ out: #define __SSP_STRONG__ 3
 #define __ATOMIC_ACQ_REL 4
 #define __ATOMIC_RELEASE 3
 
-find program=['ar'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='AR' -> ['/usr/bin/ar']
+find program=['ar'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='AR' -> ['/usr/bin/ar']
 /usr/bin/gcc
 ----------------------------------------
 Checking for cc version
 11.4.0
 ----------------------------------------
 Checking for 'g++' (C++ compiler)
-find program=['g++', 'c++'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='CXX' -> ['/usr/bin/g++']
+find program=['g++', 'c++'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='CXX' -> ['/usr/bin/g++']
 ['/usr/bin/g++', '-dM', '-E', '-']
 out: #define __SSP_STRONG__ 3
 #define __DBL_MIN_EXP__ (-1021)
@@ -764,14 +764,14 @@ Checking for compilation flag -Wl,--soname=foo support
 ==>
 int main() { return 0; }
 <==
-[1/1] Compiling [32mbuild/.conf_check_3f65f55000d11e277a156d2c02152dbc/test.cpp[0m
+[1/1] Compiling [32mbuild/.conf_check_df711a8b9b60730c873c4385200b158b/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-Wl,--soname=foo', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_3f65f55000d11e277a156d2c02152dbc/testbuild/test.cpp.1.o']
+['/usr/bin/g++', '-w', '-ggdb', '-Wl,--soname=foo', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_df711a8b9b60730c873c4385200b158b/testbuild/test.cpp.1.o']
 ok
 ------------------------------------------------------
 Checking for program 'python'
 /usr/bin/python2.7
-find program=['python'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='PYTHON' -> ['/usr/bin/python2.7']
+find program=['python'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='PYTHON' -> ['/usr/bin/python2.7']
 ['/usr/bin/python2.7', '-c', 'import imp;print(imp.get_tag())']
 err: Traceback (most recent call last):
   File "<string>", line 1, in <module>
@@ -838,7 +838,7 @@ LDVERSION = ''
 ------------------------------------------------------
 python-config
 /usr/bin/python2.7-config
-find program=['/usr/bin/python2.7-config', 'python2.7-config', 'python-config-2.7', 'python2.7m-config'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='PYTHON_CONFIG' -> ['/usr/bin/python2.7-config']
+find program=['/usr/bin/python2.7-config', 'python2.7-config', 'python-config-2.7', 'python2.7m-config'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='PYTHON_CONFIG' -> ['/usr/bin/python2.7-config']
 ------------------------------------------------------------------
 Asking python-config for pyembed '--cflags --libs --ldflags' flags
 ['/usr/bin/python2.7-config', '--cflags', '--libs', '--ldflags']
@@ -869,38 +869,12 @@ int main(int argc, char **argv)
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_71d25832f6040ed700da458dfb8d774b/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_cd125785f7508159859e3b815e6bffd6/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-fno-strict-aliasing', '-ffile-prefix-map=/build/python2.7-6b3SkC/python2.7-2.7.18=.', '-flto=auto', '-ffat-lto-objects', '-flto=auto', '-ffat-lto-objects', '-fstack-protector-strong', '-fwrapv', '-I/usr/include/python2.7', '-I/usr/include/x86_64-linux-gnu/python2.7', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DPYTHONDIR="/usr/local/lib/python2.7/dist-packages"', '-DPYTHONARCHDIR="/usr/local/lib/python2.7/dist-packages"', '-DHAVE_PYEMBED=1', '-D_FORTIFY_SOURCE=2', '-DNDEBUG', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_71d25832f6040ed700da458dfb8d774b/testbuild/test.cpp.1.o']
-err: In file included from /usr/include/python2.7/Python.h:88,
-                 from ../test.cpp:2:
-/usr/include/python2.7/unicodeobject.h:534:24: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  534 |     register PyObject *obj,     /* Object */
-      |                        ^~~
-/usr/include/python2.7/unicodeobject.h:553:24: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  553 |     register PyObject *obj      /* Object */
-      |                        ^~~
-/usr/include/python2.7/unicodeobject.h:575:29: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  575 |     register const wchar_t *w,  /* wchar_t buffer */
-      |                             ^
-/usr/include/python2.7/unicodeobject.h:593:23: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  593 |     register wchar_t *w,        /* wchar_t buffer */
-      |                       ^
-In file included from /usr/include/python2.7/Python.h:97,
-                 from ../test.cpp:2:
-/usr/include/python2.7/stringobject.h:173:24: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  173 |     register PyObject *obj,     /* string or Unicode object */
-      |                        ^~~
-/usr/include/python2.7/stringobject.h:174:21: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  174 |     register char **s,          /* pointer to buffer variable */
-      |                     ^
-/usr/include/python2.7/stringobject.h:175:26: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  175 |     register Py_ssize_t *len    /* pointer to length variable or NULL
-      |                          ^~~
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-fno-strict-aliasing', '-ffile-prefix-map=/build/python2.7-6b3SkC/python2.7-2.7.18=.', '-flto=auto', '-ffat-lto-objects', '-flto=auto', '-ffat-lto-objects', '-fstack-protector-strong', '-fwrapv', '-I/usr/include/python2.7', '-I/usr/include/x86_64-linux-gnu/python2.7', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DPYTHONDIR="/usr/local/lib/python2.7/dist-packages"', '-DPYTHONARCHDIR="/usr/local/lib/python2.7/dist-packages"', '-DHAVE_PYEMBED=1', '-D_FORTIFY_SOURCE=2', '-DNDEBUG', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_cd125785f7508159859e3b815e6bffd6/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_cd125785f7508159859e3b815e6bffd6/testbuild/testprog[0m
 
-[2/2] Linking [33mbuild/.conf_check_71d25832f6040ed700da458dfb8d774b/testbuild/testprog[0m
-
-['/usr/bin/g++', '-Xlinker', '-export-dynamic', '-Wl,-O1', '-Wl,-Bsymbolic-functions', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_71d25832f6040ed700da458dfb8d774b/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic', '-L/usr/lib/python2.7/config-x86_64-linux-gnu', '-L/usr/lib', '-lpython2.7', '-ldl', '-lm']
+['/usr/bin/g++', '-Xlinker', '-export-dynamic', '-Wl,-O1', '-Wl,-Bsymbolic-functions', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_cd125785f7508159859e3b815e6bffd6/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic', '-L/usr/lib/python2.7/config-x86_64-linux-gnu', '-L/usr/lib', '-lpython2.7', '-ldl', '-lm']
 yes
 ------------------------------------------------------------------
 Asking python-config for pyext '--cflags --libs --ldflags' flags
@@ -932,56 +906,30 @@ int main(int argc, char **argv)
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_2002bae5df56ffe3b5a12fc766cbbaf0/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_04ebea4b82ef9645a23dc696e61323b1/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-fPIC', '-fno-strict-aliasing', '-ffile-prefix-map=/build/python2.7-6b3SkC/python2.7-2.7.18=.', '-flto=auto', '-ffat-lto-objects', '-flto=auto', '-ffat-lto-objects', '-fstack-protector-strong', '-fwrapv', '-I/usr/include/python2.7', '-I/usr/include/x86_64-linux-gnu/python2.7', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DPYTHONDIR="/usr/local/lib/python2.7/dist-packages"', '-DPYTHONARCHDIR="/usr/local/lib/python2.7/dist-packages"', '-DHAVE_PYEMBED=1', '-DHAVE_PYEXT=1', '-D_FORTIFY_SOURCE=2', '-DNDEBUG', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_2002bae5df56ffe3b5a12fc766cbbaf0/testbuild/test.cpp.1.o']
-err: In file included from /usr/include/python2.7/Python.h:88,
-                 from ../test.cpp:2:
-/usr/include/python2.7/unicodeobject.h:534:24: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  534 |     register PyObject *obj,     /* Object */
-      |                        ^~~
-/usr/include/python2.7/unicodeobject.h:553:24: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  553 |     register PyObject *obj      /* Object */
-      |                        ^~~
-/usr/include/python2.7/unicodeobject.h:575:29: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  575 |     register const wchar_t *w,  /* wchar_t buffer */
-      |                             ^
-/usr/include/python2.7/unicodeobject.h:593:23: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  593 |     register wchar_t *w,        /* wchar_t buffer */
-      |                       ^
-In file included from /usr/include/python2.7/Python.h:97,
-                 from ../test.cpp:2:
-/usr/include/python2.7/stringobject.h:173:24: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  173 |     register PyObject *obj,     /* string or Unicode object */
-      |                        ^~~
-/usr/include/python2.7/stringobject.h:174:21: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  174 |     register char **s,          /* pointer to buffer variable */
-      |                     ^
-/usr/include/python2.7/stringobject.h:175:26: warning: ISO C++17 does not allow ‘register’ storage class specifier [-Wregister]
-  175 |     register Py_ssize_t *len    /* pointer to length variable or NULL
-      |                          ^~~
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-fPIC', '-fno-strict-aliasing', '-ffile-prefix-map=/build/python2.7-6b3SkC/python2.7-2.7.18=.', '-flto=auto', '-ffat-lto-objects', '-flto=auto', '-ffat-lto-objects', '-fstack-protector-strong', '-fwrapv', '-I/usr/include/python2.7', '-I/usr/include/x86_64-linux-gnu/python2.7', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DPYTHONDIR="/usr/local/lib/python2.7/dist-packages"', '-DPYTHONARCHDIR="/usr/local/lib/python2.7/dist-packages"', '-DHAVE_PYEMBED=1', '-DHAVE_PYEXT=1', '-D_FORTIFY_SOURCE=2', '-DNDEBUG', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_04ebea4b82ef9645a23dc696e61323b1/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_04ebea4b82ef9645a23dc696e61323b1/testbuild/testprog.so[0m
 
-[2/2] Linking [33mbuild/.conf_check_2002bae5df56ffe3b5a12fc766cbbaf0/testbuild/testprog.so[0m
-
-['/usr/bin/g++', '-shared', '-Xlinker', '-export-dynamic', '-Wl,-O1', '-Wl,-Bsymbolic-functions', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_2002bae5df56ffe3b5a12fc766cbbaf0/testbuild/testprog.so', '-Wl,-Bstatic', '-Wl,-Bdynamic', '-L/usr/lib/python2.7/config-x86_64-linux-gnu', '-L/usr/lib', '-lpython2.7', '-ldl', '-lm']
+['/usr/bin/g++', '-shared', '-Xlinker', '-export-dynamic', '-Wl,-O1', '-Wl,-Bsymbolic-functions', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_04ebea4b82ef9645a23dc696e61323b1/testbuild/testprog.so', '-Wl,-Bstatic', '-Wl,-Bdynamic', '-L/usr/lib/python2.7/config-x86_64-linux-gnu', '-L/usr/lib', '-lpython2.7', '-ldl', '-lm']
 yes
 ------------------------------------------------------------------
 Checking for compilation flag -fvisibility=hidden support
 ==>
 int main() { return 0; }
 <==
-[1/1] Compiling [32mbuild/.conf_check_3f65f55000d11e277a156d2c02152dbc/test.cpp[0m
+[1/1] Compiling [32mbuild/.conf_check_df711a8b9b60730c873c4385200b158b/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-fvisibility=hidden', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DPYTHONDIR="/usr/local/lib/python2.7/dist-packages"', '-DPYTHONARCHDIR="/usr/local/lib/python2.7/dist-packages"', '-DHAVE_PYEMBED=1', '-DHAVE_PYEXT=1', '-DHAVE_PYTHON_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_3f65f55000d11e277a156d2c02152dbc/testbuild/test.cpp.1.o']
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-fvisibility=hidden', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DPYTHONDIR="/usr/local/lib/python2.7/dist-packages"', '-DPYTHONARCHDIR="/usr/local/lib/python2.7/dist-packages"', '-DHAVE_PYEMBED=1', '-DHAVE_PYEXT=1', '-DHAVE_PYTHON_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_df711a8b9b60730c873c4385200b158b/testbuild/test.cpp.1.o']
 ok
 ------------------------------------------------------------------
 Checking for compilation flag -Wno-array-bounds support
 ==>
 int main() { return 0; }
 <==
-[1/1] Compiling [32mbuild/.conf_check_3f65f55000d11e277a156d2c02152dbc/test.cpp[0m
+[1/1] Compiling [32mbuild/.conf_check_df711a8b9b60730c873c4385200b158b/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-Wno-array-bounds', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DPYTHONDIR="/usr/local/lib/python2.7/dist-packages"', '-DPYTHONARCHDIR="/usr/local/lib/python2.7/dist-packages"', '-DHAVE_PYEMBED=1', '-DHAVE_PYEXT=1', '-DHAVE_PYTHON_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_3f65f55000d11e277a156d2c02152dbc/testbuild/test.cpp.1.o']
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-Wno-array-bounds', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DPYTHONDIR="/usr/local/lib/python2.7/dist-packages"', '-DPYTHONARCHDIR="/usr/local/lib/python2.7/dist-packages"', '-DHAVE_PYEMBED=1', '-DHAVE_PYEXT=1', '-DHAVE_PYTHON_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_df711a8b9b60730c873c4385200b158b/testbuild/test.cpp.1.o']
 ok
 ------------------------------------------------------------------
 Checking for pybindgen location
@@ -1039,7 +987,7 @@ not found
 ------------------------------------------------------------------
 Checking for program 'pkg-config'
 /usr/bin/pkg-config
-find program=['pkg-config'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='PKGCONFIG' -> ['/usr/bin/pkg-config']
+find program=['pkg-config'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='PKGCONFIG' -> ['/usr/bin/pkg-config']
 ------------------------------------------------------------------
 Checking for 'gtk+-2.0' >= 2.12
 ['/usr/bin/pkg-config', '--atleast-version=2.12', 'gtk+-2.0']
@@ -1067,9 +1015,9 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_1312195c2425aa0c40e3898c817a89f2/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_a610ddef3b377ef5e3f93efe800a3b80/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_1312195c2425aa0c40e3898c817a89f2/testbuild/test.cpp.1.o']
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_a610ddef3b377ef5e3f93efe800a3b80/testbuild/test.cpp.1.o']
 err: ../test.cpp: In function ‘int main(int, char**)’:
 ../test.cpp:5:14: error: ‘uint128_t’ was not declared in this scope; did you mean ‘uint8_t’?
     5 |         if ((uint128_t *) 0) return 0;
@@ -1094,8 +1042,8 @@ from /home/wade/ah-lab/src/core: Test does not build: Traceback (most recent cal
     raise Errors.BuildError(self.producer.error)
 BuildError: Build failed
  -> task in 'testprog' failed (exit status 1): 
-	{task 140459432330128: cxx test.cpp -> test.cpp.1.o}
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_1312195c2425aa0c40e3898c817a89f2/testbuild/test.cpp.1.o']
+	{task 140123688549072: cxx test.cpp -> test.cpp.1.o}
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_a610ddef3b377ef5e3f93efe800a3b80/testbuild/test.cpp.1.o']
 
 not found
 from /home/wade/ah-lab/src/core: The configuration failed
@@ -1112,12 +1060,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_6e3c49dbcf4a3ced4bf077d6c1c954f3/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_ba705c5b7aefd9d732f7c9e97e6c4da8/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_6e3c49dbcf4a3ced4bf077d6c1c954f3/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_6e3c49dbcf4a3ced4bf077d6c1c954f3/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_ba705c5b7aefd9d732f7c9e97e6c4da8/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_ba705c5b7aefd9d732f7c9e97e6c4da8/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_6e3c49dbcf4a3ced4bf077d6c1c954f3/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_ba705c5b7aefd9d732f7c9e97e6c4da8/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking high precision implementation
@@ -1133,12 +1081,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_fc437dd31db47fdee3c14c22c9cbd9e0/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_46d42210eeb332e8d5bf437bba0732b7/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_fc437dd31db47fdee3c14c22c9cbd9e0/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_fc437dd31db47fdee3c14c22c9cbd9e0/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_46d42210eeb332e8d5bf437bba0732b7/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_46d42210eeb332e8d5bf437bba0732b7/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_fc437dd31db47fdee3c14c22c9cbd9e0/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_46d42210eeb332e8d5bf437bba0732b7/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header inttypes.h
@@ -1151,12 +1099,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_7817f0e888165d8ffbdf896dd19540bc/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_936279da6dcd793880e342464d70edca/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_7817f0e888165d8ffbdf896dd19540bc/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_7817f0e888165d8ffbdf896dd19540bc/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_936279da6dcd793880e342464d70edca/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_936279da6dcd793880e342464d70edca/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_7817f0e888165d8ffbdf896dd19540bc/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_936279da6dcd793880e342464d70edca/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header sys/inttypes.h
@@ -1169,9 +1117,9 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_0edf6d3ca1d3cf30b51b33af83e00899/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_93883d94232b08366ecb0f855d22b369/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_0edf6d3ca1d3cf30b51b33af83e00899/testbuild/test.cpp.1.o']
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_93883d94232b08366ecb0f855d22b369/testbuild/test.cpp.1.o']
 err: ../test.cpp:1:10: fatal error: sys/inttypes.h: No such file or directory
     1 | #include <sys/inttypes.h>
       |          ^~~~~~~~~~~~~~~~
@@ -1184,8 +1132,8 @@ from /home/wade/ah-lab/src/core: Test does not build: Traceback (most recent cal
     raise Errors.BuildError(self.producer.error)
 BuildError: Build failed
  -> task in 'testprog' failed (exit status 1): 
-	{task 140459432444048: cxx test.cpp -> test.cpp.1.o}
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_0edf6d3ca1d3cf30b51b33af83e00899/testbuild/test.cpp.1.o']
+	{task 140123689284048: cxx test.cpp -> test.cpp.1.o}
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_93883d94232b08366ecb0f855d22b369/testbuild/test.cpp.1.o']
 
 not found
 from /home/wade/ah-lab/src/core: The configuration failed
@@ -1200,12 +1148,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_e78146e82bc67a8a78387e8a1373716c/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_8826328d2b3ae50ceb0b446580facf60/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_e78146e82bc67a8a78387e8a1373716c/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_e78146e82bc67a8a78387e8a1373716c/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_8826328d2b3ae50ceb0b446580facf60/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_8826328d2b3ae50ceb0b446580facf60/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_e78146e82bc67a8a78387e8a1373716c/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_8826328d2b3ae50ceb0b446580facf60/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header sys/stat.h
@@ -1218,12 +1166,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_2a063ec8c808bd9b8fab343cc2432844/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_770600661f97c2a5d736cea336a31228/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_2a063ec8c808bd9b8fab343cc2432844/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_2a063ec8c808bd9b8fab343cc2432844/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_770600661f97c2a5d736cea336a31228/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_770600661f97c2a5d736cea336a31228/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_2a063ec8c808bd9b8fab343cc2432844/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_770600661f97c2a5d736cea336a31228/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header dirent.h
@@ -1236,12 +1184,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_10bfcfc780d996d4475e3c7a3023185d/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_158e1bf26f4af734a9b477e6739c19d4/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_10bfcfc780d996d4475e3c7a3023185d/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_10bfcfc780d996d4475e3c7a3023185d/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_158e1bf26f4af734a9b477e6739c19d4/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_158e1bf26f4af734a9b477e6739c19d4/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_10bfcfc780d996d4475e3c7a3023185d/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_158e1bf26f4af734a9b477e6739c19d4/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header stdlib.h
@@ -1254,12 +1202,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_cf82818e3aa0223a0f4a72bdf29f09ac/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_3276725281e770c27b0c73a42147f0e6/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_cf82818e3aa0223a0f4a72bdf29f09ac/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_cf82818e3aa0223a0f4a72bdf29f09ac/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_3276725281e770c27b0c73a42147f0e6/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_3276725281e770c27b0c73a42147f0e6/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_cf82818e3aa0223a0f4a72bdf29f09ac/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_3276725281e770c27b0c73a42147f0e6/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header signal.h
@@ -1272,12 +1220,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_74acf99e8ac75eb171d2229be6748009/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_fbefcf67eb3495747a4ca7eabfa17338/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_74acf99e8ac75eb171d2229be6748009/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_74acf99e8ac75eb171d2229be6748009/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_fbefcf67eb3495747a4ca7eabfa17338/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_fbefcf67eb3495747a4ca7eabfa17338/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_74acf99e8ac75eb171d2229be6748009/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_fbefcf67eb3495747a4ca7eabfa17338/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header pthread.h
@@ -1292,12 +1240,12 @@ int main ()
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_ec851c1d3c6acf263ea36581348f19b0/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_dd0fffb91afe8c0716e438748e370fc3/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-pthread', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_ec851c1d3c6acf263ea36581348f19b0/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_ec851c1d3c6acf263ea36581348f19b0/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-pthread', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_dd0fffb91afe8c0716e438748e370fc3/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_dd0fffb91afe8c0716e438748e370fc3/testbuild/testprog[0m
 
-['/usr/bin/g++', '-pthread', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_ec851c1d3c6acf263ea36581348f19b0/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', '-pthread', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_dd0fffb91afe8c0716e438748e370fc3/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header stdint.h
@@ -1310,12 +1258,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_fc437dd31db47fdee3c14c22c9cbd9e0/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_46d42210eeb332e8d5bf437bba0732b7/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_fc437dd31db47fdee3c14c22c9cbd9e0/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_fc437dd31db47fdee3c14c22c9cbd9e0/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_46d42210eeb332e8d5bf437bba0732b7/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_46d42210eeb332e8d5bf437bba0732b7/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_fc437dd31db47fdee3c14c22c9cbd9e0/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_46d42210eeb332e8d5bf437bba0732b7/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header inttypes.h
@@ -1328,12 +1276,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_7817f0e888165d8ffbdf896dd19540bc/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_936279da6dcd793880e342464d70edca/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '-DHAVE_STDINT_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_7817f0e888165d8ffbdf896dd19540bc/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_7817f0e888165d8ffbdf896dd19540bc/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '-DHAVE_STDINT_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_936279da6dcd793880e342464d70edca/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_936279da6dcd793880e342464d70edca/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_7817f0e888165d8ffbdf896dd19540bc/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_936279da6dcd793880e342464d70edca/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header sys/inttypes.h
@@ -1346,9 +1294,9 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_0edf6d3ca1d3cf30b51b33af83e00899/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_93883d94232b08366ecb0f855d22b369/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_0edf6d3ca1d3cf30b51b33af83e00899/testbuild/test.cpp.1.o']
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_93883d94232b08366ecb0f855d22b369/testbuild/test.cpp.1.o']
 err: ../test.cpp:1:10: fatal error: sys/inttypes.h: No such file or directory
     1 | #include <sys/inttypes.h>
       |          ^~~~~~~~~~~~~~~~
@@ -1361,8 +1309,8 @@ from /home/wade/ah-lab/src/core: Test does not build: Traceback (most recent cal
     raise Errors.BuildError(self.producer.error)
 BuildError: Build failed
  -> task in 'testprog' failed (exit status 1): 
-	{task 140459431735376: cxx test.cpp -> test.cpp.1.o}
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_0edf6d3ca1d3cf30b51b33af83e00899/testbuild/test.cpp.1.o']
+	{task 140123688595600: cxx test.cpp -> test.cpp.1.o}
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_93883d94232b08366ecb0f855d22b369/testbuild/test.cpp.1.o']
 
 not found
 from /home/wade/ah-lab/src/core: The configuration failed
@@ -1376,12 +1324,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_5c96de1ce984f591260a92553e142b73/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_a4f368c454346d9e17dee54421d7e64a/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-pthread', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_5c96de1ce984f591260a92553e142b73/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_5c96de1ce984f591260a92553e142b73/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-pthread', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE___UINT128_T=1', '-DINT64X64_USE_128=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_SYS_STAT_H=1', '-DHAVE_DIRENT_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_GETENV=1', '-DHAVE_SIGNAL_H=1', '-DHAVE_PTHREAD_H=1', '-DHAVE_STDINT_H=1', '-DHAVE_INTTYPES_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_a4f368c454346d9e17dee54421d7e64a/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_a4f368c454346d9e17dee54421d7e64a/testbuild/testprog[0m
 
-['/usr/bin/g++', '-pthread', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_5c96de1ce984f591260a92553e142b73/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic', '-lrt']
+['/usr/bin/g++', '-pthread', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_a4f368c454346d9e17dee54421d7e64a/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic', '-lrt']
 yes
 ------------------------------------------------------------------
 Checking for header sys/ioctl.h
@@ -1394,12 +1342,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_368c48f59c8f321532bfbc77dfb24405/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_e123e6bd0b0c69ae0ddab7e5444ffc7c/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_368c48f59c8f321532bfbc77dfb24405/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_368c48f59c8f321532bfbc77dfb24405/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_e123e6bd0b0c69ae0ddab7e5444ffc7c/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_e123e6bd0b0c69ae0ddab7e5444ffc7c/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_368c48f59c8f321532bfbc77dfb24405/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_e123e6bd0b0c69ae0ddab7e5444ffc7c/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header net/if.h
@@ -1412,12 +1360,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_7198f46f43371f717fb63b859102463d/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_ee093db04e4e7632fd54c6d903abe13b/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_7198f46f43371f717fb63b859102463d/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_7198f46f43371f717fb63b859102463d/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_ee093db04e4e7632fd54c6d903abe13b/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_ee093db04e4e7632fd54c6d903abe13b/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_7198f46f43371f717fb63b859102463d/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_ee093db04e4e7632fd54c6d903abe13b/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header net/ethernet.h
@@ -1430,12 +1378,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_427da3a98aa0bffd519ba2c362a6982e/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_c4ad616dfc9484eeae829aae48ce48bd/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_427da3a98aa0bffd519ba2c362a6982e/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_427da3a98aa0bffd519ba2c362a6982e/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_c4ad616dfc9484eeae829aae48ce48bd/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_c4ad616dfc9484eeae829aae48ce48bd/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_427da3a98aa0bffd519ba2c362a6982e/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_c4ad616dfc9484eeae829aae48ce48bd/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header linux/if_tun.h
@@ -1448,12 +1396,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_a3300b3eade11f5110a04d733428666e/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_d08965bc0f1276721ced01d781f6438f/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_a3300b3eade11f5110a04d733428666e/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_a3300b3eade11f5110a04d733428666e/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_d08965bc0f1276721ced01d781f6438f/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_d08965bc0f1276721ced01d781f6438f/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_a3300b3eade11f5110a04d733428666e/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_d08965bc0f1276721ced01d781f6438f/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for header netpacket/packet.h
@@ -1466,12 +1414,12 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_fef6ad11027d77f7e98fd384808e8df2/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_bd7adbcf6488173790c23a6db14d7423/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_IF_TUN_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_fef6ad11027d77f7e98fd384808e8df2/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_fef6ad11027d77f7e98fd384808e8df2/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_IF_TUN_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_bd7adbcf6488173790c23a6db14d7423/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_bd7adbcf6488173790c23a6db14d7423/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_fef6ad11027d77f7e98fd384808e8df2/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_bd7adbcf6488173790c23a6db14d7423/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for NSC location
@@ -1493,21 +1441,21 @@ int main(int argc, char **argv) {
 }
 
 <==
-[1/2] Compiling [32mbuild/.conf_check_a3300b3eade11f5110a04d733428666e/test.cpp[0m
+[1/2] Compiling [32mbuild/.conf_check_d08965bc0f1276721ced01d781f6438f/test.cpp[0m
 
-['/usr/bin/g++', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_PACKET_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_a3300b3eade11f5110a04d733428666e/testbuild/test.cpp.1.o']
-[2/2] Linking [33mbuild/.conf_check_a3300b3eade11f5110a04d733428666e/testbuild/testprog[0m
+['/usr/bin/g++', '-w', '-ggdb', '-std=c++17', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_PACKET_H=1', '../test.cpp', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_d08965bc0f1276721ced01d781f6438f/testbuild/test.cpp.1.o']
+[2/2] Linking [33mbuild/.conf_check_d08965bc0f1276721ced01d781f6438f/testbuild/testprog[0m
 
-['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_a3300b3eade11f5110a04d733428666e/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
+['/usr/bin/g++', 'test.cpp.1.o', '-o', '/home/wade/ah-lab/build/.conf_check_d08965bc0f1276721ced01d781f6438f/testbuild/testprog', '-Wl,-Bstatic', '-Wl,-Bdynamic']
 yes
 ------------------------------------------------------------------
 Checking for program 'sudo'
 /usr/bin/sudo
-find program=['sudo'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='SUDO' -> ['/usr/bin/sudo']
+find program=['sudo'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='SUDO' -> ['/usr/bin/sudo']
 ------------------------------------------------------------------
 Checking for program 'valgrind'
 /usr/bin/valgrind
-find program=['valgrind'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='VALGRIND' -> ['/usr/bin/valgrind']
+find program=['valgrind'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='VALGRIND' -> ['/usr/bin/valgrind']
 ------------------------------------------------------------------
 Checking for 'gsl'
 ['/usr/bin/pkg-config', '--cflags', '--libs', 'gsl']
@@ -1517,36 +1465,36 @@ yes
 ------------------------------------------------------------------
 python-config
 not found
-find program=['libgcrypt-config'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='LIBGCRYPT_CONFIG' -> None
+find program=['libgcrypt-config'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='LIBGCRYPT_CONFIG' -> None
 from /home/wade/ah-lab: Could not find the program ['libgcrypt-config']
 ------------------------------------------------------------------
 Checking for compilation flag -Wno-error=deprecated-d... support
 ==>
 int main() { return 0; }
 <==
-[1/1] Compiling [32mbuild/.conf_check_d1c48b09fb942f25c82903afa111aa1d/test.c[0m
+[1/1] Compiling [32mbuild/.conf_check_c1c8301ff06075a56b0139d01cea3ff7/test.c[0m
 
-['/usr/bin/gcc', '-Wno-error=deprecated-declarations', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_PACKET_H=1', '-DHAVE_IF_TUN_H=1', '../test.c', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_d1c48b09fb942f25c82903afa111aa1d/testbuild/test.c.1.o']
+['/usr/bin/gcc', '-Wno-error=deprecated-declarations', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_PACKET_H=1', '-DHAVE_IF_TUN_H=1', '../test.c', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_c1c8301ff06075a56b0139d01cea3ff7/testbuild/test.c.1.o']
 ok
 ------------------------------------------------------------------
 Checking for compilation flag -fstrict-aliasing support
 ==>
 int main() { return 0; }
 <==
-[1/1] Compiling [32mbuild/.conf_check_d1c48b09fb942f25c82903afa111aa1d/test.c[0m
+[1/1] Compiling [32mbuild/.conf_check_c1c8301ff06075a56b0139d01cea3ff7/test.c[0m
 
-['/usr/bin/gcc', '-fstrict-aliasing', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_PACKET_H=1', '-DHAVE_IF_TUN_H=1', '../test.c', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_d1c48b09fb942f25c82903afa111aa1d/testbuild/test.c.1.o']
+['/usr/bin/gcc', '-fstrict-aliasing', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_PACKET_H=1', '-DHAVE_IF_TUN_H=1', '../test.c', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_c1c8301ff06075a56b0139d01cea3ff7/testbuild/test.c.1.o']
 ok
 ------------------------------------------------------------------
 Checking for compilation flag -Wstrict-aliasing support
 ==>
 int main() { return 0; }
 <==
-[1/1] Compiling [32mbuild/.conf_check_d1c48b09fb942f25c82903afa111aa1d/test.c[0m
+[1/1] Compiling [32mbuild/.conf_check_c1c8301ff06075a56b0139d01cea3ff7/test.c[0m
 
-['/usr/bin/gcc', '-Wstrict-aliasing', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_PACKET_H=1', '-DHAVE_IF_TUN_H=1', '../test.c', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_d1c48b09fb942f25c82903afa111aa1d/testbuild/test.c.1.o']
+['/usr/bin/gcc', '-Wstrict-aliasing', '-DNS3_BUILD_PROFILE_DEBUG', '-DNS3_ASSERT_ENABLE', '-DNS3_LOG_ENABLE', '-DHAVE_SYS_IOCTL_H=1', '-DHAVE_IF_NETS_H=1', '-DHAVE_NET_ETHERNET_H=1', '-DHAVE_PACKET_H=1', '-DHAVE_IF_TUN_H=1', '../test.c', '-c', '-o', '/home/wade/ah-lab/build/.conf_check_c1c8301ff06075a56b0139d01cea3ff7/testbuild/test.c.1.o']
 ok
 ------------------------------------------------------------------
 Checking for program 'doxygen'
 /usr/bin/doxygen
-find program=['doxygen'] paths=['/home/wade/.vscode-server/cli/servers/Stable-17baf841131aa23349f217ca7c570c76ee87b957/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='DOXYGEN' -> ['/usr/bin/doxygen']
+find program=['doxygen'] paths=['/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand', '/home/wade/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli', '/home/wade/.vscode-server/cli/servers/Stable-072586267e68ece9a47aa43f8c108e0dcbf44622/server/bin/remote-cli', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin', '/usr/games', '/usr/local/games', '/snap/bin'] var='DOXYGEN' -> ['/usr/bin/doxygen']

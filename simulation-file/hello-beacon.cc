@@ -4,7 +4,7 @@ using namespace ns3;
 static Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
 
 Hello_beacon_App::Hello_beacon_App()
-    : enable_print_neighbor(false),
+    : enable_print_neighbor(true),
       m_running(false),
       socket_type_id(TypeId::LookupByName("ns3::UdpSocketFactory")),
       m_tx_socket(nullptr),
@@ -59,7 +59,7 @@ Hello_beacon_App::set_port(const uint16_t port)
     m_port = port;
 }
 
-void
+void 
 Hello_beacon_App::set_backoff_limit(const unsigned int max_backoff_slot,
                                     const unsigned int min_backoff_slot)
 {
@@ -122,6 +122,7 @@ Hello_beacon_App::get_backoff_time()
 void
 Hello_beacon_App::StartApplication()
 {
+    std::cout<<"hello beacon app start"<<std::endl;
     // check if backoff_slot is set to valid values
     if (uv->GetMin() < 0.0 || uv->GetMax() * m_backoff_slot_time > m_hello_interval)
     {
@@ -190,7 +191,7 @@ Hello_beacon_App::create_hello_packet()
     // check if packet_content size is too large (NOTE: content max size is 255)
     const int max_data_size = 65507; // ns3::MAX_IPV4_UDP_DATAGRAM_SIZE
     NS_ASSERT_MSG(m_packet_content.length() <= max_data_size, "packet_content too large!\n");
-    m_packet_content += " hello"; // remove this line after testing
+    //m_packet_content += " hello"; // remove this line after testing
 }
 
 void
@@ -198,6 +199,7 @@ Hello_beacon_App::send_packet()
 {
     if (m_running)
     {
+        std::cout<<"hello"<<std::endl;
         Ptr<Packet> packet;
         if (m_packet_content.size() > 0)
         {
@@ -212,7 +214,7 @@ Hello_beacon_App::send_packet()
         SocketIpTtlTag tag;
         tag.SetTtl(1); // set ttl to 1 to find one hop neighbors
         packet->AddPacketTag(tag);
-        m_tx_socket->Send(packet);
+         ->Send(packet);
     }
 }
 

@@ -119,7 +119,7 @@ SendPacketApp::SetupSocket()
 		// select the first channel with idle state to send packets
 		// TODO: maybe check all the channels and randomly choose one?
 		m_send_channel = 1;
-		for (int i{1}; i < m_phy_vec.size(); ++i)
+		for (uint32_t i{1}; i < m_phy_vec.size(); ++i)
 		{
 			if (m_phy_vec[i]->IsStateIdle())
 			{

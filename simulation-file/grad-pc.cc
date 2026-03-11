@@ -226,6 +226,7 @@ GradPC_App::set_gradPC_func(const std::vector<short> gradPC_func_vec)
 void
 GradPC_App::StartApplication()
 {
+    std::cout<<"grad pc app start"<<std::endl;
     NS_ASSERT_MSG(!m_gradPC_func_vec.empty(), "m_gradPC_func_vec is empty.");
 
     // check if the size of the vector is the same as total devices(except and loopback)

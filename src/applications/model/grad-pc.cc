@@ -341,9 +341,11 @@ GradPC_App::set_tx_power(float tx_power_dBm, const unsigned int device_idx)
     }
     Ptr<WifiNetDevice> wifi_device = DynamicCast<WifiNetDevice>(m_node->GetDevice(device_idx));
     Ptr<YansWifiPhy> wifi_phy = DynamicCast<YansWifiPhy>(wifi_device->GetPhy());
-    if (wifi_phy->GetTxPowerEnd() < tx_power_dBm) {
-        NS_LOG_UNCOND("adjusted tx_power_dBm: " << tx_power_dBm);
-        NS_ASSERT(tx_power_dBm <= wifi_phy->GetTxPowerEnd());
+    double maxPower = wifi_phy->GetTxPowerEnd();
+    if (tx_power_dBm > maxPower) {
+        NS_LOG_UNCOND("requested tx_power_dBm " << tx_power_dBm << " exceeds TxPowerEnd " << maxPower << ", clamping");
+        tx_power_dBm = maxPower;
+        tx_power_valid = false; // indicate it was adjusted
     }
     wifi_phy->SetTxPowerStart(tx_power_dBm); // adjust TxPowerStart for a smaller power
     if (wifi_phy->GetNTxPower() == 1) {

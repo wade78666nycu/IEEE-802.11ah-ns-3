@@ -7,7 +7,7 @@ BUILD_PROFILE = 'debug'
 BUILD_SUFFIX = '-debug'
 CC = ['/usr/bin/gcc']
 CCDEFINES = ['_DEBUG']
-CCFLAGS = ['-O0', '-ggdb', '-g3', '-Wall', '-Werror', '-Wall', '-std=c++17', '-ggdb', '-std=c++17', '-Wno-error=deprecated-declarations', '-fstrict-aliasing', '-Wstrict-aliasing']
+CCFLAGS = ['-O0', '-ggdb', '-g3', '-Wall', '-Werror', '-w', '-ggdb', '-std=c++17', '-Wno-error=deprecated-declarations', '-fstrict-aliasing', '-Wstrict-aliasing']
 CCFLAGS_PTHREAD = '-pthread'
 CCFLAGS_PYEXT = ['-fvisibility=hidden']
 CCLNK_SRC_F = []
@@ -25,7 +25,7 @@ COMPILER_CC = 'gcc'
 COMPILER_CXX = 'g++'
 CPPPATH_ST = '-I%s'
 CXX = ['/usr/bin/g++']
-CXXFLAGS = ['-Wall', '-std=c++17', '-ggdb', '-std=c++17']
+CXXFLAGS = ['-w', '-ggdb', '-std=c++17']
 CXXFLAGS_GTK2 = ['-pthread']
 CXXFLAGS_MACBUNDLE = ['-fPIC']
 CXXFLAGS_PTHREAD = '-pthread'

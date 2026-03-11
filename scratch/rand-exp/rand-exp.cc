@@ -6,6 +6,7 @@
 #include "ns3/applications-module.h"
 #include "ns3/core-module.h"
 #include "ns3/dsr-module.h"
+#include "ns3/hello-beacon.h"
 #include "ns3/internet-module.h"
 #include "ns3/mobility-helper.h"
 #include "ns3/mobility-model.h"
@@ -15,6 +16,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <cmath>
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("Lab");
@@ -69,6 +71,65 @@ export_node_power(const NodeContainer& node_container)
 			export_file << "\n";
 		}
 		export_file << "output power unit: dBm\n";
+		export_file.close();
+	}
+	return;
+}
+
+void
+export_etx_matrix(const NodeContainer& node_container)
+{
+	std::string file_name{"rand_etx.csv"};
+	std::ofstream export_file(file_name);
+	if (export_file.is_open())
+	{
+		const unsigned int num_nodes = node_container.GetN();
+		
+		// Write header row (receiver node IDs)
+		export_file << "Sender/Receiver";
+		for (unsigned int j = 0; j < num_nodes; ++j)
+		{
+			export_file << "," << j;
+		}
+		export_file << "\n";
+		
+		// Write ETX matrix (rows = senders, columns = receivers)
+		for (unsigned int i = 0; i < num_nodes; ++i)
+		{
+			export_file << i;  // sender node ID
+			Ptr<Node> sender_node = node_container.Get(i);
+			
+			// Find Hello_beacon_App in this node
+			Ptr<Hello_beacon_App> hello_app = nullptr;
+			for (unsigned int app_idx = 0; app_idx < sender_node->GetNApplications(); ++app_idx)
+			{
+				hello_app = DynamicCast<Hello_beacon_App>(sender_node->GetApplication(app_idx));
+				if (hello_app != nullptr)
+				{
+					break;
+				}
+			}
+			
+			// For each receiver node
+			for (unsigned int j = 0; j < num_nodes; ++j)
+			{
+				export_file << ",";
+				if (hello_app != nullptr && i != j)
+				{
+					double etx = hello_app->get_etx(j);
+					if (std::isinf(etx))
+					{
+						export_file << "INF";
+					}
+					else
+					{
+						export_file << std::fixed << std::setprecision(2) << etx;
+					}
+				}
+				// else: empty cell if sender == receiver or app not found
+			}
+			export_file << "\n";
+		}
 		export_file.close();
 	}
 	return;
@@ -596,6 +657,7 @@ main(int argc, char* argv[])
 			const unsigned int min_backoff_slot = 0;
 			hello_beacon_app->set_backoff_limit(max_backoff_slot, min_backoff_slot);
 			hello_beacon_app->set_backoff_slot_time(Time("4ms"));
+			hello_beacon_app->set_max_packet_count(30);
 			// hello_beacon_app->enable_print_neighbor = true;
 
 			hello_beacon_app->SetStartTime(hello_beacon_start_time);
@@ -687,6 +749,9 @@ main(int argc, char* argv[])
 		export_node_position(node_container);
 		export_node_power(node_container);
 	}
+	
+	// Export ETX matrix
+	export_etx_matrix(node_container);
 
 	unsigned long total_recv_packets{};
 	float avg_delay{0.0};
