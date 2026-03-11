@@ -24,7 +24,7 @@ NS_LOG_COMPONENT_DEFINE("Lab");
 void
 export_node_position(const NodeContainer& node_container)
 {
-	std::string file_name{"node_position.txt"};
+	std::string file_name{"rand_node_position.txt"};
 	std::ofstream export_file(file_name);
 	if (export_file.is_open())
 	{
@@ -45,10 +45,13 @@ export_node_position(const NodeContainer& node_container)
 void
 export_node_power(const NodeContainer& node_container)
 {
-	std::string file_name{"node_power.txt"};
-	std::ofstream export_file(file_name);
-	if (export_file.is_open())
-	{
+	auto write_node_power = [&](const std::string& file_name) {
+		std::ofstream export_file(file_name);
+		if (!export_file.is_open())
+		{
+			return;
+		}
+
 		auto get_tx_power = [](Ptr<YansWifiPhy> wifi_phy) {
 			double tx_power = round(wifi_phy->GetTxPowerStart() * 100) / 100;
 			return tx_power;
@@ -72,19 +75,36 @@ export_node_power(const NodeContainer& node_container)
 		}
 		export_file << "output power unit: dBm\n";
 		export_file.close();
-	}
+	};
+
+	// Prefer explicit rand-exp output name, but keep legacy filename for existing scripts.
+	write_node_power("rand_node_power.txt");
 	return;
 }
 
 void
 export_etx_matrix(const NodeContainer& node_container)
 {
-	std::string file_name{"rand_etx.csv"};
-	std::ofstream export_file(file_name);
-	if (export_file.is_open())
+	const unsigned int num_nodes = node_container.GetN();
+	if (num_nodes == 0)
 	{
-		const unsigned int num_nodes = node_container.GetN();
-		
+		return;
+	}
+
+	Ptr<Ipv4> ipv4 = node_container.Get(0)->GetObject<Ipv4>();
+	const uint32_t channel_count = ipv4 ? (ipv4->GetNInterfaces() > 0 ? ipv4->GetNInterfaces() - 1 : 0) : 0;
+	if (channel_count == 0)
+	{
+		return;
+	}
+
+	auto write_matrix = [&](const std::string& file_name, const uint32_t ifIndex) {
+		std::ofstream export_file(file_name);
+		if (!export_file.is_open())
+		{
+			return;
+		}
+
 		// Write header row (receiver node IDs)
 		export_file << "Sender/Receiver";
 		for (unsigned int j = 0; j < num_nodes; ++j)
@@ -92,13 +112,13 @@ export_etx_matrix(const NodeContainer& node_container)
 			export_file << "," << j;
 		}
 		export_file << "\n";
-		
+
 		// Write ETX matrix (rows = senders, columns = receivers)
 		for (unsigned int i = 0; i < num_nodes; ++i)
 		{
 			export_file << i;  // sender node ID
 			Ptr<Node> sender_node = node_container.Get(i);
-			
+
 			// Find Hello_beacon_App in this node
 			Ptr<Hello_beacon_App> hello_app = nullptr;
 			for (unsigned int app_idx = 0; app_idx < sender_node->GetNApplications(); ++app_idx)
@@ -109,14 +129,14 @@ export_etx_matrix(const NodeContainer& node_container)
 					break;
 				}
 			}
-			
+
 			// For each receiver node
 			for (unsigned int j = 0; j < num_nodes; ++j)
 			{
 				export_file << ",";
 				if (hello_app != nullptr && i != j)
 				{
-					double etx = hello_app->get_etx(j);
+					double etx = hello_app->get_etx(j, ifIndex);
 					if (std::isinf(etx))
 					{
 						export_file << "INF";
@@ -131,6 +151,11 @@ export_etx_matrix(const NodeContainer& node_container)
 			export_file << "\n";
 		}
 		export_file.close();
+	};
+
+	for (uint32_t ifIndex = 1; ifIndex <= channel_count; ++ifIndex)
+	{
+		write_matrix("rand_etx_ch" + std::to_string(ifIndex) + ".csv", ifIndex);
 	}
 	return;
 }
@@ -453,10 +478,11 @@ main(int argc, char* argv[])
 	float gradpc_delta{0.35};
 	std::string routing_method{"aodv"};
 	bool export_node_info{false};
-	bool use_gradpc{false};
+	bool enable_hello{false};
+	bool enable_power_control{true};
 	bool use_biconn{false};
 	bool reduce_default_power{true};
-	bool show_log{false};
+	bool show_log{true};
 
 	CommandLine cmd;
 	cmd.AddValue("num_nodes", "total number of nodes", num_nodes);
@@ -469,11 +495,14 @@ main(int argc, char* argv[])
 	cmd.AddValue("gradpc_delta", "value of gardpc's delta, value must be between 0 ~ 1 (exclusive)", gradpc_delta);
 	cmd.AddValue("routing_method", "routing method used", routing_method);
 	cmd.AddValue("export_node_info", "export node's position and power", export_node_info);
-	cmd.AddValue("use_gradpc", "set true to enable grad power control", use_gradpc);
+	cmd.AddValue("enable_hello", "set true to enable hello beacon (ETX measurement)", enable_hello);
+	cmd.AddValue("enable_power_control", "set false to disable tx power control (keep same power across channels)", enable_power_control);
+
 	cmd.AddValue("use_biconn", "set true to enable biconn power control", use_biconn);
 	cmd.AddValue("reduce_default", "set to true if channel 1's power can be reduced", reduce_default_power);
 	cmd.AddValue("show_log", "show log", show_log);
 	cmd.Parse(argc, argv);
+
 
 	NS_LOG_INFO("rand seed: " << rand_seed);
 	SeedManager::SetSeed(rand_seed);
@@ -532,13 +561,12 @@ main(int argc, char* argv[])
 
 	// need to install the InternetStackHelper before installing dsr
 	InternetStackHelper internet;
-	if (routing_method == "dsr")
-	{
-		NS_LOG_INFO("dsr");
-		internet.Install(node_container);
-		// install dsr
-		DsrMainHelper dsrMain;
-		DsrHelper dsr;
+	    if (routing_method == "dsr")
+	    {
+		    internet.Install(node_container);
+		    // install dsr
+		    DsrMainHelper dsrMain;
+		    DsrHelper dsr;
 		// dsr.Set("RreqRetries", UintegerValue(8));
 		dsr.Set("MinLifeTime", TimeValue(Seconds(10.0)));
 		// dsr.Set("NonPropRequestTimeout", TimeValue(MilliSeconds(64.0))); // default is 30ms
@@ -547,25 +575,24 @@ main(int argc, char* argv[])
 		// dsr.Set("MaxSendBuffLen", UintegerValue(128)); // default is 64
 		dsrMain.Install(dsr, node_container);
 	}
-	else if (routing_method == "aodv")
-	{
-		NS_LOG_INFO("aodv");
-		// settings of aodv
-		AodvHelper aodv_helper;
-		aodv_helper.Set("EnableHello", BooleanValue(false));
+	    else if (routing_method == "aodv")
+	    {
+		    // settings of aodv
+		    AodvHelper aodv_helper;
+		    aodv_helper.Set("EnableHello", BooleanValue(false));
 		// aodv_helper.Set("RreqRateLimit", UintegerValue(12)); // default is 10
 		aodv_helper.Set("ActiveRouteTimeout", TimeValue(Seconds(10.0)));
-		if (use_gradpc)
-			aodv_helper.Set("GradPCAppIdx", IntegerValue(1));
+			if (enable_hello && enable_power_control)
+				aodv_helper.Set("GradPCAppIdx", IntegerValue(1));
 
 		// install the InternetStackHelper and aodv routing
 		InternetStackHelper internet;
 		internet.SetRoutingHelper(aodv_helper); // has effect on the next Install ()
 		internet.Install(node_container);
-		if (show_log)
+		/*if (show_log)
 		{
 			LogComponentEnable("AodvRoutingProtocol", LOG_LEVEL_DEBUG);
-		}
+		}*/
 	}
 	else
 	{
@@ -603,51 +630,62 @@ main(int argc, char* argv[])
 	const DataRate data_rate("300Kbps");	  // bps: bits per second
 	Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
 
-	Time hello_beacon_start_time = Seconds(0);
-	Time hello_beacon_stop_time = Seconds(0);
-	Time grad_pc_start_time = Seconds(0);
-	Time grad_pc_stop_time = Seconds(0);
-	if (use_gradpc)
-	{
-		hello_beacon_start_time = Seconds(1.0);						// [second]
-		hello_beacon_stop_time = Seconds(20.0);						// [second]
-		grad_pc_start_time = hello_beacon_stop_time + Seconds(1.0); // [second]
-		grad_pc_stop_time = grad_pc_start_time + Seconds(1.0);		// [second]
-		total_simulation_time += grad_pc_stop_time + Seconds(1);
+		Time hello_beacon_start_time = Seconds(0);
+		Time hello_beacon_stop_time = Seconds(0);
+		Time grad_pc_start_time = Seconds(0);
+		Time grad_pc_stop_time = Seconds(0);
+			if (enable_hello)
+			{
+				if (show_log)
+				{
+					std::cout << "[rand-exp] "<< routing_method << " hello=on power_control=" << (enable_power_control ? "on" : "off") << "\n";
+				}
+				hello_beacon_start_time = Seconds(1.0);						// [second]
+				hello_beacon_stop_time = Seconds(20.0);						// [second]
+				if (enable_power_control)
+				{
+					grad_pc_start_time = hello_beacon_stop_time + Seconds(1.0); // [second]
+					grad_pc_stop_time = grad_pc_start_time + Seconds(1.0);		// [second]
+				}
+				Time control_stop_time = enable_power_control ? grad_pc_stop_time : hello_beacon_stop_time;
+				total_simulation_time += control_stop_time + Seconds(1);
 
-		Time hello_interval = MilliSeconds(180.0); // milliseconds
-		float extra_tx_distance{80.0};
-		if (use_biconn)
-			extra_tx_distance = 0.0;
-		std::vector<short> gradPC_func_vec;
-		GradPC_App::GradPC_type func_type;
-		if (gradpc_type == 1)
-		{
-			func_type = GradPC_App::GradPC_type::torque;
-			NS_LOG_INFO("GradPC torque");
-		}
-		else if (gradpc_type == 2)
-		{
-			func_type = GradPC_App::GradPC_type::proportional;
-			NS_LOG_INFO("GradPC proportional");
-		}
-		else if (gradpc_type == 3)
-		{
-			func_type = GradPC_App::GradPC_type::logarithmic;
-			NS_LOG_INFO("GradPC logarithmic");
-		}
-		else
-		{
-			NS_ASSERT_MSG(false, "Not a valid gradpc_type option");
-		}
-		for (unsigned int i{1}; i <= device_num; ++i)
-		{
-			gradPC_func_vec.emplace_back(static_cast<short>(func_type));
-		}
+			Time hello_interval = MilliSeconds(180.0); // milliseconds
+			float extra_tx_distance{80.0};
+			if (use_biconn)
+				extra_tx_distance = 0.0;
+			std::vector<short> gradPC_func_vec;
+			if (enable_power_control)
+			{
+				GradPC_App::GradPC_type func_type;
+				if (gradpc_type == 1)
+				{
+					func_type = GradPC_App::GradPC_type::torque;
+					if (show_log) std::cout << "[rand-exp] power_control=GradPC torque\n";
+				}
+				else if (gradpc_type == 2)
+				{
+					func_type = GradPC_App::GradPC_type::proportional;
+					if (show_log) std::cout << "[rand-exp] power_control=GradPC proportional\n";
+				}
+				else if (gradpc_type == 3)
+				{
+					func_type = GradPC_App::GradPC_type::logarithmic;
+					if (show_log) std::cout << "[rand-exp] power_control=GradPC logarithmic\n";
+				}
+				else
+				{
+					NS_ASSERT_MSG(false, "Not a valid gradpc_type option");
+				}
+				for (unsigned int i{1}; i <= device_num; ++i)
+				{
+					gradPC_func_vec.emplace_back(static_cast<short>(func_type));
+				}
+			}
 
-		for (unsigned int i{}; i < num_nodes; ++i)
-		{
-			Ptr<Node> node = node_container.Get(i);
+			for (unsigned int i{}; i < num_nodes; ++i)
+			{
+				Ptr<Node> node = node_container.Get(i);
 
 			// Install Hello_beacon_App on each node
 			Ptr<Hello_beacon_App> hello_beacon_app = CreateObject<Hello_beacon_App>();
@@ -662,40 +700,48 @@ main(int argc, char* argv[])
 
 			hello_beacon_app->SetStartTime(hello_beacon_start_time);
 			hello_beacon_app->SetStopTime(hello_beacon_stop_time);
-			node->AddApplication(hello_beacon_app);
+				node->AddApplication(hello_beacon_app);
 
-			// Install GradPC_App on each node
-			Ptr<GradPC_App> grad_pc_app = CreateObject<GradPC_App>();
-			grad_pc_app->set_gradPC_func(gradPC_func_vec);
-			// grad_pc_app->m_print_neighbor_list = true;
-			grad_pc_app->gradPC_proportional_delta = 0.35;
-			grad_pc_app->set_extra_tx_distance(extra_tx_distance);
-			if (reduce_default_power)
-				grad_pc_app->set_reduce_default_power();
-			if (gradpc_type == 2)
-			{
-				grad_pc_app->gradPC_proportional_delta = gradpc_delta;
+				if (enable_power_control)
+				{
+					// Install GradPC_App on each node
+					Ptr<GradPC_App> grad_pc_app = CreateObject<GradPC_App>();
+					grad_pc_app->set_gradPC_func(gradPC_func_vec);
+					// grad_pc_app->m_print_neighbor_list = true;
+					grad_pc_app->gradPC_proportional_delta = 0.35;
+					grad_pc_app->set_extra_tx_distance(extra_tx_distance);
+					if (reduce_default_power)
+						grad_pc_app->set_reduce_default_power();
+					if (gradpc_type == 2)
+					{
+						grad_pc_app->gradPC_proportional_delta = gradpc_delta;
+					}
+					else if (gradpc_type == 3)
+					{
+						grad_pc_app->set_gradpc_log_k(gradpc_log_k);
+					}
+					grad_pc_app->SetStartTime(grad_pc_start_time);
+					grad_pc_app->SetStopTime(grad_pc_stop_time);
+					node->AddApplication(grad_pc_app);
+				}
 			}
-			else if (gradpc_type == 3)
-			{
-				grad_pc_app->set_gradpc_log_k(gradpc_log_k);
-			}
-			grad_pc_app->SetStartTime(grad_pc_start_time);
-			grad_pc_app->SetStopTime(grad_pc_stop_time);
-			node->AddApplication(grad_pc_app);
 		}
-	}
 	else if (use_biconn)
 	{
 		NS_LOG_INFO("BICONN");
 		biconn_func(node_container, TxPowerStart, ref_loss, path_loss_exponent, cca_threshold);
 	}
-	else
-	{
-		NS_LOG_INFO("Default with device_num: " << device_num);
-	}
+		else
+		{
+			if (show_log)
+			{
+				std::cout << "[rand-exp] hello=off (default), devices=" << device_num << "\n";
+			}
+		}
 
-	Time recv_pkt_start_time = (use_gradpc) ? grad_pc_stop_time + Seconds(1) : Seconds(0.01);
+		Time recv_pkt_start_time =
+			(enable_hello) ? ((enable_power_control ? grad_pc_stop_time : hello_beacon_stop_time) + Seconds(1))
+						 : Seconds(0.01);
 	Time recv_pkt_end_time = total_simulation_time - Seconds(1);
 	Time send_pkt_end_time = total_simulation_time - Seconds(2);
 	double min_send_pkt_start_time = (recv_pkt_start_time).GetSeconds();

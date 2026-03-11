@@ -88,7 +88,8 @@ GradPC_App::init_neighbor_list()
     // get original neighbor set
     auto original_set = DynamicCast<Hello_beacon_App>(m_node->GetApplication(hello_beacon_app_idx))
                             ->get_neighbor_set();
-    m_neighbor_list.emplace_back(original_set);
+    const unsigned int total_channels = m_node->GetNDevices() - 1; // exclude loopback
+    m_neighbor_list.assign(total_channels, original_set);
 }
 
 void
@@ -151,6 +152,12 @@ GradPC_App::gradPC_log(const unsigned int neighbor_size)
 float
 GradPC_App::gradPC_log_power(const int device_idx, const unsigned int neighbor_size)
 {
+    if (neighbor_size == 0) {
+        if (static_cast<size_t>(device_idx) < m_neighbor_list.size()) {
+            m_neighbor_list[device_idx].clear();
+        }
+        return 0.0;
+    }
     const float k {m_gradpc_log_k};
     int neighbor_upperbound = std::max(1, static_cast<int>(round(k * log(neighbor_size))));
     neighbor_upperbound = std::min(static_cast<int>(neighbor_size), neighbor_upperbound);
@@ -158,11 +165,11 @@ GradPC_App::gradPC_log_power(const int device_idx, const unsigned int neighbor_s
 
     // update neighbors
     std::unordered_set<uint32_t> neighbor_set = update_neighbor_set(neighbor_upperbound, tx_distance);
-    if (m_reduce_default_power && device_idx == 0) {
-        m_neighbor_list[0] = neighbor_set;
-    } else {
-        m_neighbor_list.emplace_back(neighbor_set);
+    if (static_cast<size_t>(device_idx) >= m_neighbor_list.size())
+    {
+        m_neighbor_list.resize(device_idx + 1);
     }
+    m_neighbor_list[device_idx] = std::move(neighbor_set);
     return calculate_tx_power(tx_distance);
 }
 
@@ -180,6 +187,10 @@ GradPC_App::gradPC_proportional_power(const int device_idx, const unsigned int n
 {
     if (neighbor_size == 0) {
         // set power to zero if no neighbors found
+        if (static_cast<size_t>(device_idx) < m_neighbor_list.size())
+        {
+            m_neighbor_list[device_idx].clear();
+        }
         return 0.0;
     }
     int neighbor_upperbound = std::max(1, static_cast<int>((1 - delta) * neighbor_size));
@@ -189,11 +200,11 @@ GradPC_App::gradPC_proportional_power(const int device_idx, const unsigned int n
 
     // update neighbors
     std::unordered_set<uint32_t> neighbor_set = update_neighbor_set(neighbor_upperbound, tx_distance);
-    if (m_reduce_default_power && device_idx == 0) {
-        m_neighbor_list[0] = neighbor_set;
-    } else {
-        m_neighbor_list.emplace_back(neighbor_set);
+    if (static_cast<size_t>(device_idx) >= m_neighbor_list.size())
+    {
+        m_neighbor_list.resize(device_idx + 1);
     }
+    m_neighbor_list[device_idx] = std::move(neighbor_set);
     return calculate_tx_power(tx_distance);
 }
 
@@ -201,6 +212,13 @@ GradPC_App::gradPC_proportional_power(const int device_idx, const unsigned int n
 float
 GradPC_App::gradPC_torque_power(const int device_idx, const unsigned int neighbor_size)
 {
+    if (neighbor_size == 0) {
+        if (static_cast<size_t>(device_idx) < m_neighbor_list.size())
+        {
+            m_neighbor_list[device_idx].clear();
+        }
+        return 0.0;
+    }
     float total_distance{0.0};
     float d_tilde{0.0};
     std::vector<float> distance_vec;
@@ -220,11 +238,11 @@ GradPC_App::gradPC_torque_power(const int device_idx, const unsigned int neighbo
 
     // add neighbor who's distances are smaller than d_tilde
     std::unordered_set<uint32_t> neighbor_set = update_neighbor_set(neighbor_size, d_tilde);
-    if (m_reduce_default_power && device_idx == 0) {
-        m_neighbor_list[0] = neighbor_set;
-    } else {
-        m_neighbor_list.emplace_back(neighbor_set);
+    if (static_cast<size_t>(device_idx) >= m_neighbor_list.size())
+    {
+        m_neighbor_list.resize(device_idx + 1);
     }
+    m_neighbor_list[device_idx] = std::move(neighbor_set);
     return calculate_tx_power(d_tilde);
 }
 
@@ -358,13 +376,15 @@ GradPC_App::set_tx_power(float tx_power_dBm, const unsigned int device_idx)
 void
 GradPC_App::adjust_tx_power(const short gradPC_func_type, const unsigned int device_idx)
 {
-    //NS_ASSERT_MSG(device_idx > 0, "device_idx 0 should not be modified.");
-    if (device_idx > 0)
-        NS_ASSERT_MSG(device_idx - 1 < m_neighbor_list.size(), "device_idx is out of range.");
+    NS_ASSERT_MSG(device_idx < m_node->GetNDevices() - 1, "device_idx is out of range.");
+    if (m_neighbor_list.size() < (m_node->GetNDevices() - 1))
+    {
+        m_neighbor_list.resize(m_node->GetNDevices() - 1);
+    }
 
     GradPC_type func_type = static_cast<GradPC_type>(gradPC_func_type);
     float tx_power {};
-    const unsigned int neighbor_size = (device_idx == 0) ? m_neighbor_list[device_idx].size() : m_neighbor_list[device_idx - 1].size();
+    const unsigned int neighbor_size = m_neighbor_list[device_idx].size();
     if (func_type == GradPC_type::logarithmic)
     {
         tx_power = gradPC_log_power(device_idx, neighbor_size);
@@ -393,8 +413,8 @@ GradPC_App::adjust_tx_power(const short gradPC_func_type, const unsigned int dev
 
 bool
 GradPC_App::is_neighbor(const unsigned node_id, const unsigned int device_idx) {
-    NS_ASSERT_MSG(device_idx > 0 && device_idx - 1 < m_neighbor_list.size(), "invalid device_idx.");
-    return m_neighbor_list[device_idx - 1].count(node_id) != 0;
+    NS_ASSERT_MSG(device_idx < m_neighbor_list.size(), "invalid device_idx.");
+    return m_neighbor_list[device_idx].count(node_id) != 0;
 }
 
 std::vector<std::unordered_set<uint32_t>>

@@ -8,22 +8,19 @@ static Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
 NS_LOG_COMPONENT_DEFINE("HelloBeacon");
 
 Hello_beacon_App::Hello_beacon_App()
-    : enable_print_neighbor(false),
-      run_interval(0),
-      wait_interval(0),
-      m_running(false),
-      socket_type_id(TypeId::LookupByName("ns3::UdpSocketFactory")),
-      m_tx_socket(nullptr),
-      m_rx_socket(nullptr),
-      m_packetSize(128),
-      m_port(80),
-      m_hello_interval(MilliSeconds(100.0)),
-      m_backoff_slot_time(MicroSeconds(100.0)),
-      m_packet_content(""),
-      m_data_rate("3MB/s"),
-      m_sequence_number(0),
-      m_packet_count(0),
-      m_max_packet_count(1)
+	    : enable_print_neighbor(false),
+	      run_interval(0),
+	      wait_interval(0),
+	      m_running(false),
+	      socket_type_id(TypeId::LookupByName("ns3::UdpSocketFactory")),
+	      m_packetSize(128),
+	      m_port(80),
+	      m_hello_interval(MilliSeconds(100.0)),
+	      m_backoff_slot_time(MicroSeconds(100.0)),
+	      m_packet_content(""),
+	      m_data_rate("3MB/s"),
+	      m_packet_count(0),
+	      m_max_packet_count(1)
 {
 }
 
@@ -36,8 +33,12 @@ Hello_beacon_App::Hello_beacon_App(const unsigned int num_nodes)
 
 Hello_beacon_App::~Hello_beacon_App()
 {
-    m_tx_socket = nullptr;
-    m_rx_socket = nullptr;
+	    for (auto& s : m_tx_sockets)
+	    {
+	        s = nullptr;
+	    }
+	    m_tx_destinations.clear();
+	    m_rx_socket = nullptr;
 }
 
 TypeId
@@ -98,24 +99,60 @@ Hello_beacon_App::set_max_packet_count(const uint32_t max_count)
 void
 Hello_beacon_App::set_socket()
 {
-    Ptr<Node> node = GetNode();
-    // setup rx_socket
-    // NOTE: need to bind rx_socket with broadcast address to make SetRecvCallback work
-    m_rx_socket = Socket::CreateSocket(node, socket_type_id);
-    InetSocketAddress rx_local = InetSocketAddress("255.255.255.255", m_port);
-    // Ipv4Address broadcast_ip_addr = Ipv4Address::ConvertFrom(node->GetDevice(0)->GetBroadcast());
-    // InetSocketAddress rx_local = InetSocketAddress(broadcast_ip_addr, m_port);
-    if (m_rx_socket->Bind(rx_local) == -1)
-    {
-        NS_FATAL_ERROR("Failed to bind socket");
-    }
-    m_rx_socket->SetRecvCallback(MakeCallback(&Hello_beacon_App::handle_recv_packet, this));
+	    Ptr<Node> node = GetNode();
+	    Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
+	    NS_ASSERT(ipv4);
 
-    // setup tx_socket
-    m_tx_socket = Socket::CreateSocket(node, socket_type_id);
-    m_tx_socket->BindToNetDevice(node->GetDevice(0));
-    m_tx_socket->SetAllowBroadcast(true);
-    m_tx_socket->Connect(rx_local);
+	    m_tx_sockets.clear();
+	    m_tx_ifIndices.clear();
+	    m_tx_destinations.clear();
+	    m_rx_socket = nullptr;
+
+	    // RX socket (single). Enable packet info so we can read which interface the packet arrived on.
+	    m_rx_socket = Socket::CreateSocket(node, socket_type_id);
+	    m_rx_socket->SetAllowBroadcast(true);
+	    m_rx_socket->SetRecvPktInfo(true);
+	    InetSocketAddress rx_local = InetSocketAddress(Ipv4Address::GetAny(), m_port);
+	    if (m_rx_socket->Bind(rx_local) == -1)
+	    {
+	        NS_FATAL_ERROR("Failed to bind rx socket");
+	    }
+	    m_rx_socket->SetRecvCallback(MakeCallback(&Hello_beacon_App::handle_recv_packet, this));
+
+	    const uint32_t nIf = ipv4->GetNInterfaces();
+	    // Start from 1 since index 0 is loopback.
+	    for (uint32_t ifIndex = 1; ifIndex < nIf; ++ifIndex)
+	    {
+	        if (!ipv4->IsUp(ifIndex) || ipv4->GetNAddresses(ifIndex) == 0)
+	        {
+	            continue;
+	        }
+
+	        Ipv4Address localAddr = ipv4->GetAddress(ifIndex, 0).GetLocal();
+	        Ptr<NetDevice> dev = ipv4->GetNetDevice(ifIndex);
+	        if (!dev)
+	        {
+	            continue;
+	        }
+
+	        // TX socket bound to this interface/device.
+	        Ptr<Socket> tx = Socket::CreateSocket(node, socket_type_id);
+	        tx->SetAllowBroadcast(true);
+	        // Use limited broadcast to avoid consulting the routing protocol.
+	        // (Subnet-directed broadcast would trigger RouteOutput(), which can crash under DSR.)
+	        Ipv4Address destination = Ipv4Address("255.255.255.255");
+	        // Bind to device to avoid routing-protocol interactions when sending broadcast.
+	        tx->BindToNetDevice(dev);
+	        m_tx_sockets.emplace_back(tx);
+	        m_tx_ifIndices.emplace_back(ifIndex);
+	        m_tx_destinations.emplace_back(destination);
+	    }
+
+	    const uint32_t maxIfIndex = nIf > 0 ? (nIf - 1) : 0;
+	    m_sequence_number_by_if.assign(maxIfIndex + 1, 0);
+	    m_neighbor_set_by_if.assign(maxIfIndex + 1, {});
+	    m_neighbor_info_by_if.assign(maxIfIndex + 1, {});
+	    m_neighbor_df_by_if.assign(maxIfIndex + 1, {});
 }
 
 std::unordered_set<uint32_t>
@@ -133,7 +170,18 @@ Hello_beacon_App::get_distance_vec()
 double
 Hello_beacon_App::get_delivery_ratio(uint32_t neighbor_id)
 {
-    return CalculateDeliveryRatio(neighbor_id);
+	    double best = 0.0;
+	    for (uint32_t ifIndex = 1; ifIndex < m_neighbor_info_by_if.size(); ++ifIndex)
+	    {
+	        best = std::max(best, CalculateDeliveryRatio(neighbor_id, ifIndex));
+	    }
+	    return best;
+}
+
+double
+Hello_beacon_App::get_delivery_ratio(uint32_t neighbor_id, uint32_t ifIndex)
+{
+	    return CalculateDeliveryRatio(neighbor_id, ifIndex);
 }
 
 Time
@@ -145,22 +193,18 @@ Hello_beacon_App::get_backoff_time()
 void
 Hello_beacon_App::StartApplication()
 {
-    // Open debug file for this node
-    //std::string filename = "hello_beacon_debug_node_" + std::to_string(GetNode()->GetId()) + ".txt";
-    //m_debug_file.open(filename, std::ios::app);
-    
     if (uv->GetMin() < 0.0 || uv->GetMax() * m_backoff_slot_time > m_hello_interval)
     {
         // if min/max values are not valid, set to default values
         const double max_backoff_slot = 32;
         const double min_backoff_slot = 0;
         set_backoff_limit(max_backoff_slot, min_backoff_slot);
-    }
+	    }
     set_socket();
 
-    // Reset packet count
-    m_packet_count = 0;
-    m_sequence_number = 0;
+	    // Reset packet count
+	    m_packet_count = 0;
+	    std::fill(m_sequence_number_by_if.begin(), m_sequence_number_by_if.end(), 0);
     
     if (run_interval != 0) {
         Simulator::Schedule(run_interval, &Hello_beacon_App::StopApplication, this);
@@ -182,23 +226,22 @@ Hello_beacon_App::StopApplication()
         Simulator::Cancel(m_send_event);
     }
 
-    if (m_tx_socket)
+    for (auto& s : m_tx_sockets)
     {
-        m_tx_socket->Close();
-        m_tx_socket = nullptr;
+        if (s)
+        {
+            s->Close();
+            s = nullptr;
+        }
     }
+    m_tx_sockets.clear();
+    m_tx_ifIndices.clear();
     if (m_rx_socket)
     {
         m_rx_socket->Close();
         m_rx_socket = nullptr;
     }
-    
-    // Close debug file
-    /*if (m_debug_file.is_open())
-    {
-        m_debug_file.close();
-    }*/
-    
+
     if (enable_print_neighbor)
         print_neighbor_set();
 
@@ -212,16 +255,20 @@ Hello_beacon_App::StopApplication()
 void
 Hello_beacon_App::send_periodically()
 {
-    // Check if we have reached the maximum packet count
-    if (m_packet_count < m_max_packet_count)
-    {
-        // Recreate hello packet with updated neighbor table
-        create_hello_packet();
-        send_packet();
-        m_packet_count++;
-        
-        // Schedule next send with random jitter to reduce collisions
-        Time interval = m_hello_interval + get_backoff_time();
+		    // Check if we have reached the maximum packet count
+		    if (m_packet_count < m_max_packet_count)
+		    {
+		        // Send one hello packet per interface/NIC per round.
+		        for (size_t idx = 0; idx < m_tx_sockets.size(); ++idx)
+		        {
+		            const uint32_t ifIndex = m_tx_ifIndices.at(idx);
+		            create_hello_packet(ifIndex);
+		            send_packet(m_tx_sockets.at(idx), m_tx_destinations.at(idx));
+		        }
+		        m_packet_count++;
+	        
+	        // Schedule next send with random jitter to reduce collisions
+	        Time interval = m_hello_interval + get_backoff_time();
         m_send_event = Simulator::Schedule(interval, &Hello_beacon_App::send_periodically, this);
     }
     else
@@ -233,29 +280,37 @@ Hello_beacon_App::send_periodically()
 
 // TODO: add my own header in the hello-beacon packet
 void
-Hello_beacon_App::create_hello_packet()
+Hello_beacon_App::create_hello_packet(uint32_t ifIndex)
 {
-    //每個節點都會執行下面的程式碼來創建自己的hello-beacon packet，然後發送給鄰居節點
-    Ptr<Node> node = GetNode();
-    uint32_t node_id = node->GetId();
-    
-    // Build packet content: NodeID SequenceNumber [NeighborID:DR,...] PositionX PositionY
-    m_packet_content = std::to_string(node_id) + " " + std::to_string(m_sequence_number) + " ";
-    
-    // Serialize neighbor table with delivery ratio
-    std::string neighbor_table_str;
-    if (!m_neighbor_set.empty()) {
-        // Sort neighbors for consistent ordering
-        std::vector<uint32_t> sorted_neighbors(m_neighbor_set.begin(), m_neighbor_set.end());
-        std::sort(sorted_neighbors.begin(), sorted_neighbors.end());
-        
-        for (size_t i = 0; i < sorted_neighbors.size(); ++i) {
-            uint32_t neighbor_id = sorted_neighbors[i];
-            double dr = CalculateDeliveryRatio(neighbor_id);
-            
-            neighbor_table_str += std::to_string(neighbor_id) + ":";
-            // Format DR to 2 decimal places
-            char dr_str[10];
+	    //每個節點都會執行下面的程式碼來創建自己的hello-beacon packet，然後發送給鄰居節點
+	    Ptr<Node> node = GetNode();
+	    uint32_t node_id = node->GetId();
+	    
+	    // Build packet content:
+	    // NodeID SequenceNumber IfIndex [NeighborID:DR,...] PositionX PositionY
+	    if (ifIndex >= m_sequence_number_by_if.size())
+	    {
+	        NS_FATAL_ERROR("Invalid interface index " << ifIndex);
+	    }
+	    uint32_t seq = m_sequence_number_by_if[ifIndex];
+	    m_packet_content =
+	        std::to_string(node_id) + " " + std::to_string(seq) + " " + std::to_string(ifIndex) + " ";
+	    
+	    // Serialize neighbor table with delivery ratio
+	    std::string neighbor_table_str;
+	    if (ifIndex < m_neighbor_set_by_if.size() && !m_neighbor_set_by_if[ifIndex].empty()) {
+	        // Sort neighbors for consistent ordering
+	        std::vector<uint32_t> sorted_neighbors(m_neighbor_set_by_if[ifIndex].begin(),
+	                                              m_neighbor_set_by_if[ifIndex].end());
+	        std::sort(sorted_neighbors.begin(), sorted_neighbors.end());
+	        
+	        for (size_t i = 0; i < sorted_neighbors.size(); ++i) {
+	            uint32_t neighbor_id = sorted_neighbors[i];
+	            double dr = CalculateDeliveryRatio(neighbor_id, ifIndex);
+	            
+	            neighbor_table_str += std::to_string(neighbor_id) + ":";
+	            // Format DR to 2 decimal places
+	            char dr_str[10];
             snprintf(dr_str, sizeof(dr_str), "%.2f", dr);
             neighbor_table_str += dr_str;
             
@@ -285,24 +340,29 @@ Hello_beacon_App::create_hello_packet()
     const int max_data_size = 65507; // ns3::MAX_IPV4_UDP_DATAGRAM_SIZE
     NS_ASSERT_MSG(m_packet_content.length() <= max_data_size, "packet_content too large!\n");
     
-    // Increment sequence number for next packet
-    m_sequence_number++;
+	    // Increment sequence number for next packet
+	    m_sequence_number_by_if[ifIndex]++;
 }
 
 double
-Hello_beacon_App::CalculateDeliveryRatio(uint32_t neighbor_id)
+Hello_beacon_App::CalculateDeliveryRatio(uint32_t neighbor_id, uint32_t ifIndex)
 {
-    //.end() returns an iterator to the element following the last element,
-    // so if find() returns .end(), it means the key was not found in the map.
-    if (m_neighbor_info.find(neighbor_id) == m_neighbor_info.end()) {
-        return 0.0;
-    }
-    
-    uint32_t received_count = m_neighbor_info[neighbor_id].size();
-    
-    if (m_max_packet_count == 0) {
-        return 0.0;
-    }
+	    //.end() returns an iterator to the element following the last element,
+	    // so if find() returns .end(), it means the key was not found in the map.
+	    if (ifIndex >= m_neighbor_info_by_if.size())
+	    {
+	        return 0.0;
+	    }
+	    auto& info = m_neighbor_info_by_if[ifIndex];
+	    if (info.find(neighbor_id) == info.end()) {
+	        return 0.0;
+	    }
+	    
+	    uint32_t received_count = info[neighbor_id].size();
+	    
+	    if (m_max_packet_count == 0) {
+	        return 0.0;
+	    }
     
     double dr = static_cast<double>(received_count) / static_cast<double>(m_max_packet_count);
     return (dr > 1.0) ? 1.0 : dr; // Cap at 1.0
@@ -312,50 +372,69 @@ Hello_beacon_App::CalculateDeliveryRatio(uint32_t neighbor_id)
 double
 Hello_beacon_App::get_df(uint32_t neighbor_id)
 {
-    auto it = m_neighbor_df.find(neighbor_id);
-    return (it == m_neighbor_df.end()) ? 0.0 : it->second;
+	    double best = 0.0;
+	    for (uint32_t ifIndex = 1; ifIndex < m_neighbor_df_by_if.size(); ++ifIndex)
+	    {
+	        best = std::max(best, get_df(neighbor_id, ifIndex));
+	    }
+	    return best;
+}
+
+double
+Hello_beacon_App::get_df(uint32_t neighbor_id, uint32_t ifIndex)
+{
+	    if (ifIndex >= m_neighbor_df_by_if.size())
+	    {
+	        return 0.0;
+	    }
+	    auto& dfMap = m_neighbor_df_by_if[ifIndex];
+	    auto it = dfMap.find(neighbor_id);
+	    return (it == dfMap.end()) ? 0.0 : it->second;
 }
 
 
 double
 Hello_beacon_App::get_etx(uint32_t neighbor_id)
 {
-    double dr = CalculateDeliveryRatio(neighbor_id);
-    double df = get_df(neighbor_id);
-    if (dr <= 0.0 || df <= 0.0) {
-        // return a large value to indicate an undefined/poor link
-        return std::numeric_limits<double>::infinity();
-    }
-    return 1.0 / (dr * df);
+	    double best = std::numeric_limits<double>::infinity();
+	    for (uint32_t ifIndex = 1; ifIndex < m_neighbor_info_by_if.size(); ++ifIndex)
+	    {
+	        best = std::min(best, get_etx(neighbor_id, ifIndex));
+	    }
+	    return best;
+}
+
+double
+Hello_beacon_App::get_etx(uint32_t neighbor_id, uint32_t ifIndex)
+{
+	    double dr = CalculateDeliveryRatio(neighbor_id, ifIndex);
+	    double df = get_df(neighbor_id, ifIndex);
+	    if (dr <= 0.0 || df <= 0.0) {
+	        return std::numeric_limits<double>::infinity();
+	    }
+	    return 1.0 / (dr * df);
 }
 
 void
-Hello_beacon_App::send_packet()
+Hello_beacon_App::send_packet(Ptr<Socket> txSocket, Ipv4Address destination)
 {
-    if (m_running)
-    {
-        Ptr<Packet> packet;
-        if (m_packet_content.size() > 0)
-        {
-            uint8_t* buffer = reinterpret_cast<uint8_t*>(&m_packet_content[0]);
-            packet = Create<Packet>(buffer, m_packet_content.length());
-        }
-        else
-        {
-            // create packet with default packet size 128[bytes]
-            packet = Create<Packet>(m_packetSize);
-        }
-        SocketIpTtlTag tag;
-        tag.SetTtl(1); // set ttl to 1 to find one hop neighbors
-        packet->AddPacketTag(tag);
-        m_tx_socket->Send(packet);
-        
-        // Debug output for sending
-        /*if (m_debug_file.is_open())
-        {
-            m_debug_file << "Node " << GetNode()->GetId() << " sent hello packet seq_num=" << m_sequence_number 
-                         << ", packet_count=" << m_packet_count << std::endl;
-        }*/
+	    if (m_running)
+	    {
+	        Ptr<Packet> packet;
+	        if (m_packet_content.size() > 0)
+	        {
+	            uint8_t* buffer = reinterpret_cast<uint8_t*>(&m_packet_content[0]);
+	            packet = Create<Packet>(buffer, m_packet_content.length());
+	        }
+	        else
+	        {
+	            // create packet with default packet size 128[bytes]
+	            packet = Create<Packet>(m_packetSize);
+	        }
+	        SocketIpTtlTag tag;
+	        tag.SetTtl(1); // set ttl to 1 to find one hop neighbors
+	        packet->AddPacketTag(tag);
+	        txSocket->SendTo(packet, 0, InetSocketAddress(destination, m_port));
     }
 }
 
@@ -365,9 +444,10 @@ Hello_beacon_App::handle_recv_packet(Ptr<Socket> socket)
 {
     Ptr<Packet> packet;
     Address from;
-    // Address localAddress;
-    while ((packet = socket->RecvFrom(from)))
-    {
+    uint32_t rxIfIndex = 0;
+	    // Address localAddress;
+	    while ((packet = socket->RecvFrom(from)))
+	    {
         // socket->GetSockName(localAddress);
         if (packet->GetSize() <= 0)
             return;
@@ -382,25 +462,37 @@ Hello_beacon_App::handle_recv_packet(Ptr<Socket> socket)
         std::string packet_str(reinterpret_cast<const char*>(data.data()), receivedSize);
         //std::cout << packet_str << std::endl; // (nodeID seq_num neighbor_table pos_x pos_y)
 
-        std::stringstream ss;
-        ss << packet_str;
-        uint32_t sender_node_id;
-        uint32_t sender_seq_num;
-        std::string neighbor_table_str;
-        float x_pos, y_pos;
-        
-        ss >> sender_node_id >> sender_seq_num >> neighbor_table_str >> x_pos >> y_pos;
-        
-        // Update neighbor set with the sender (direct neighbor)
-        if (m_neighbor_set.count(sender_node_id) == 0)
-        {
-            m_neighbor_set.insert(sender_node_id);
+	        std::stringstream ss;
+	        ss << packet_str;
+	        uint32_t sender_node_id;
+	        uint32_t sender_seq_num;
+	        uint32_t sender_if_index = 0;
+	        std::string neighbor_table_str;
+	        float x_pos, y_pos;
+	        
+	        ss >> sender_node_id >> sender_seq_num >> sender_if_index >> neighbor_table_str >> x_pos >> y_pos;
+	        // Prefer the sender-advertised interface index. In this experiment setup,
+	        // each interface maps to one "channel" (separate NetDevice + subnet).
+	        // PacketInfoTag recvIf values are not guaranteed to align with our indexing
+	        // expectations across configurations.
+	        const uint32_t linkIfIndex = (sender_if_index != 0) ? sender_if_index : rxIfIndex;
+	        if (linkIfIndex == 0 || linkIfIndex >= m_neighbor_info_by_if.size())
+	        {
+	            // Unknown interface; skip accounting to avoid OOB.
+	            continue;
+	        }
+	        
+	        // Update neighbor set with the sender (direct neighbor)
+	        if (m_neighbor_set.count(sender_node_id) == 0)
+	        {
+	            m_neighbor_set.insert(sender_node_id);
             m_distance_vec.emplace_back(CalculateDistance(m_node_position, Vector2D(x_pos, y_pos)),
                                         sender_node_id);
-        }
-        
-        // Record received sequence number for delivery ratio calculation
-        m_neighbor_info[sender_node_id].insert(sender_seq_num);
+	        }
+	        m_neighbor_set_by_if[linkIfIndex].insert(sender_node_id);
+	        
+	        // Record received sequence number for delivery ratio calculation
+	        m_neighbor_info_by_if[linkIfIndex][sender_node_id].insert(sender_seq_num);
 
         // Parse the neighbour table string; each entry looks like "id:dr" and
         // entries are comma-separated.  When the entry corresponds to *this*
@@ -417,34 +509,12 @@ Hello_beacon_App::handle_recv_packet(Ptr<Socket> socket)
                 char colon = 0;
                 std::stringstream entry_ss(entry);
                 entry_ss >> id >> colon >> dr; // will read e.g. "5:0.80"
-                if (id == GetNode()->GetId())
-                {
-                    m_neighbor_df[sender_node_id] = dr;
-                }
-                /*if (m_debug_file.is_open())
-                {
-                    m_debug_file << "Node " << GetNode()->GetId()
-                                 << " parsed neighbor-table entry " << entry
-                                 << " from node " << sender_node_id << std::endl;
-                }*/
-            }
+	                if (id == GetNode()->GetId())
+	                {
+	                    m_neighbor_df_by_if[linkIfIndex][sender_node_id] = dr;
+	                }
+	        }
         }
-
-        // Write to debug file instead of stdout
-        /*if (m_debug_file.is_open())
-        {
-            m_debug_file << "DEBUG: Node " << GetNode()->GetId() << " received msg from node " 
-                         << sender_node_id << " with seq_num=" << sender_seq_num 
-                         << ", received_count=" << m_neighbor_info[sender_node_id].size()
-                         << ", expected_count=" << m_max_packet_count;
-            if (m_neighbor_df.find(sender_node_id) != m_neighbor_df.end())
-            {
-                m_debug_file << ", df=" << m_neighbor_df[sender_node_id];
-                double etx = get_etx(sender_node_id);
-                m_debug_file << ", etx=" << etx;
-            }
-            m_debug_file << std::endl;
-        }*/
     }
 }
 
