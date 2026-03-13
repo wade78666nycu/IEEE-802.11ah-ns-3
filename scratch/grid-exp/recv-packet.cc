@@ -60,10 +60,6 @@ RecvPacketApp::StopApplication()
     {
         socket->Close();
     }
-    
-    // FIXME: don't know why received packets is always added by 1
-    if (m_packets_recv > 0) --m_packets_recv;
-
     NS_LOG_INFO("[lab] "
                 << "[node " << std::setw(2) << m_node->GetId() << "] total packets received: " << m_packets_recv);
 }
@@ -71,7 +67,7 @@ RecvPacketApp::StopApplication()
 void
 RecvPacketApp::handle_recv_packet(Ptr<Socket> socket)
 {
-    bool print_data = false;
+    bool print_data = true;
     Ptr<Packet> packet;
     Address from;
     // Address localAddress;

@@ -1,5 +1,8 @@
 #include "send-packet.h"
 
+#include <algorithm>
+#include <cstring>
+
 using namespace ns3;
 NS_LOG_COMPONENT_DEFINE("SendPacketApp");
 
@@ -84,7 +87,6 @@ SendPacketApp::StartApplication()
 	}
 
 	m_packets_sent = 0;
-	packet_msg = std::to_string(m_packets_sent) + " ";
 	m_running = true;
 	ScheduleTx();
 }
@@ -105,7 +107,6 @@ SendPacketApp::StopApplication()
 			m_socket->Close();
 		}
 	}
-	--m_packets_sent;
 	NS_LOG_INFO("[lab] "
 				<< "[node " << m_node->GetId() << "] total packets sent: " << m_packets_sent);
 }
@@ -141,28 +142,23 @@ void
 SendPacketApp::SendPacket()
 {
 	SetupSocket();
-	Ptr<Packet> packet;
-	if (packet_msg.empty())
-	{
-		packet = Create<Packet>(m_packet_size);
-	}
-	else
-	{
-		packet_msg = std::to_string(m_packets_sent) + " ";
-		packet = Create<Packet>(reinterpret_cast<const uint8_t*>(packet_msg.c_str()), m_packet_size);
-	}
+	const uint32_t src_node_id = m_node->GetId();
+	const std::string header =
+		"src=" + std::to_string(src_node_id) + " seq=" + std::to_string(m_packets_sent) + " ";
+	std::string payload(m_packet_size, '\0');
+	const size_t copy_len = std::min(payload.size(), header.size());
+	std::memcpy(payload.data(), header.data(), copy_len);
+	Ptr<Packet> packet = Create<Packet>(reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
 	// use Send() if m_socket have been connected to destination
 	// m_socket->Send(packet);
 
-	// minus 1 since m_send_channel starts from 1
-	m_socket_vec[m_send_channel - 1]->SendTo(packet, 0, m_recv_sink);
-
-	if (++m_packets_sent <= m_send_packet_num)
+	if (m_packets_sent < m_send_packet_num)
 	{
+		// minus 1 since m_send_channel starts from 1
+		m_socket_vec[m_send_channel - 1]->SendTo(packet, 0, m_recv_sink);
 		if (m_packets_sent % max_packet_num_per_round == 0)
 		{
 			// wait a interval before sending again
-
 			Time wait_time = Seconds(4.0);
 			Simulator::Schedule(wait_time, &SendPacketApp::ScheduleTx, this);
 		}
@@ -170,6 +166,7 @@ SendPacketApp::SendPacket()
 		{
 			ScheduleTx();
 		}
+		m_packets_sent++;
 	}
 }
 

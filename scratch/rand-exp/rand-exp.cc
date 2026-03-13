@@ -175,6 +175,7 @@ Wifiphy_Setting(YansWifiPhyHelper& wifiPhy,
 				const double tx_power_start,
 				const double tx_power_end,
 				const unsigned int tx_power_levels,
+				const unsigned int rx_noise_figure,
 				const double cca_threshold = -92)
 {
 	wifiPhy.Set("ShortGuardEnabled", BooleanValue(false));
@@ -189,7 +190,7 @@ Wifiphy_Setting(YansWifiPhyHelper& wifiPhy,
 	wifiPhy.Set("TxPowerStart", DoubleValue(tx_power_start));
 	wifiPhy.Set("TxPowerEnd", DoubleValue(tx_power_end));
 	wifiPhy.Set("TxPowerLevels", UintegerValue(tx_power_levels));
-	wifiPhy.Set("RxNoiseFigure", DoubleValue(7));
+	wifiPhy.Set("RxNoiseFigure", DoubleValue(rx_noise_figure));
 	wifiPhy.Set("LdpcEnabled", BooleanValue(false));
 	wifiPhy.Set("S1g1MfieldEnabled", BooleanValue(true));
 	wifiPhy.Set("Frequency", UintegerValue(freq));
@@ -346,19 +347,6 @@ set_mobility_rectangle(NodeContainer& node_container,
 }
 
 void
-set_tx_power(float tx_power_dBm, Ptr<Node> node)
-{
-	const float min_tx_power_dBm{0};
-	NS_ASSERT_MSG(tx_power_dBm >= min_tx_power_dBm, "Invalid tx_power argument");
-
-	Ptr<WifiNetDevice> wifi_device = DynamicCast<WifiNetDevice>(node->GetDevice(0));
-	Ptr<YansWifiPhy> wifi_phy = DynamicCast<YansWifiPhy>(wifi_device->GetPhy());
-
-	wifi_phy->SetTxPowerStart(tx_power_dBm);
-	wifi_phy->SetTxPowerEnd(tx_power_dBm);
-}
-
-void
 print_vec(const std::vector<unsigned int>& vec)
 {
 	for (int i : vec)
@@ -471,6 +459,7 @@ main(int argc, char* argv[])
 	unsigned int device_num{3};
 	unsigned int send_packet_num{1};
 	unsigned int gradpc_type{2};
+	unsigned int rx_noise_figure{7};
 	int rand_seed{4};
 	double cca_threshold{-92.};
 	double default_tx_power{20.0};
@@ -478,8 +467,8 @@ main(int argc, char* argv[])
 	float gradpc_delta{0.35};
 	std::string routing_method{"aodv"};
 	bool export_node_info{false};
-	bool enable_hello{false};
-	bool enable_power_control{true};
+	bool enable_hello{true};
+	bool enable_power_control{false};
 	bool use_biconn{false};
 	bool reduce_default_power{true};
 	bool show_log{true};
@@ -493,6 +482,7 @@ main(int argc, char* argv[])
 	cmd.AddValue("tx_power", "tx power", default_tx_power);
 	cmd.AddValue("gradpc_log_k", "value of gradpc's log k, suggest value is between 0.75 ~ 5.5", gradpc_log_k);
 	cmd.AddValue("gradpc_delta", "value of gardpc's delta, value must be between 0 ~ 1 (exclusive)", gradpc_delta);
+	cmd.AddValue("rx_noise_figure", "background Noise Figure", rx_noise_figure);
 	cmd.AddValue("routing_method", "routing method used", routing_method);
 	cmd.AddValue("export_node_info", "export node's position and power", export_node_info);
 	cmd.AddValue("enable_hello", "set true to enable hello beacon (ETX measurement)", enable_hello);
@@ -537,7 +527,7 @@ main(int argc, char* argv[])
 	for (unsigned int i = 0; i < device_num; ++i)
 	{
 		YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
-		Wifiphy_Setting(wifiPhy, freq, TxPowerStart, TxPowerEnd, power_levels, cca_threshold);
+		Wifiphy_Setting(wifiPhy, freq, TxPowerStart, TxPowerEnd, power_levels,rx_noise_figure, cca_threshold);
 
 		YansWifiChannelHelper wifiChannel;
 		WifiChannel_Setting(wifiChannel, path_loss_exponent, ref_loss);
@@ -580,8 +570,8 @@ main(int argc, char* argv[])
 		    // settings of aodv
 		    AodvHelper aodv_helper;
 		    aodv_helper.Set("EnableHello", BooleanValue(false));
-		// aodv_helper.Set("RreqRateLimit", UintegerValue(12)); // default is 10
-		aodv_helper.Set("ActiveRouteTimeout", TimeValue(Seconds(10.0)));
+			// aodv_helper.Set("RreqRateLimit", UintegerValue(12)); // default is 10
+			aodv_helper.Set("ActiveRouteTimeout", TimeValue(Seconds(10.0)));
 			if (enable_hello && enable_power_control)
 				aodv_helper.Set("GradPCAppIdx", IntegerValue(1));
 
@@ -589,10 +579,10 @@ main(int argc, char* argv[])
 		InternetStackHelper internet;
 		internet.SetRoutingHelper(aodv_helper); // has effect on the next Install ()
 		internet.Install(node_container);
-		/*if (show_log)
+		if (show_log)
 		{
-			LogComponentEnable("AodvRoutingProtocol", LOG_LEVEL_DEBUG);
-		}*/
+			LogComponentEnable("AodvRoutingProtocol", LOG_LEVEL_ALL);
+		}
 	}
 	else
 	{
@@ -776,14 +766,13 @@ main(int argc, char* argv[])
 		recv_pkt_app->set_count_delay();
 		dst_node->AddApplication(recv_pkt_app);
 	}
-
+	
 	// print source / destination node pair
 	for (unsigned int i{}; i < src_node_vec.size(); ++i)
 	{
 		NS_LOG_INFO("source node: " << std::setw(3) << src_node_vec[i] << " ---> destination node: " << std::setw(3)
 									<< dst_node_vec[i]);
 	}
-	//*/
 
 	// Start simulation
 	Simulator::Stop(total_simulation_time);

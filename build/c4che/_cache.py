@@ -7,7 +7,7 @@ BUILD_PROFILE = 'debug'
 BUILD_SUFFIX = '-debug'
 CC = ['/usr/bin/gcc']
 CCDEFINES = ['_DEBUG']
-CCFLAGS = ['-O0', '-ggdb', '-g3', '-Wall', '-Werror', '-w', '-ggdb', '-std=c++17', '-Wno-error=deprecated-declarations', '-fstrict-aliasing', '-Wstrict-aliasing']
+CCFLAGS = ['-O0', '-ggdb', '-g3', '-Wall', '-Werror', '-Wno-error', '-ggdb', '-std=c++17', '-Wno-error=deprecated-declarations', '-fstrict-aliasing', '-Wstrict-aliasing']
 CCFLAGS_PTHREAD = '-pthread'
 CCFLAGS_PYEXT = ['-fvisibility=hidden']
 CCLNK_SRC_F = []
@@ -16,6 +16,7 @@ CC_NAME = 'gcc'
 CC_SRC_F = []
 CC_TGT_F = ['-c', '-o']
 CC_VERSION = ('11', '4', '0')
+CFLAGS = ['-Wno-error']
 CFLAGS_GTK2 = ['-pthread']
 CFLAGS_MACBUNDLE = ['-fPIC']
 CFLAGS_PYEMBED = ['-fno-strict-aliasing', '-ffile-prefix-map=/build/python2.7-6b3SkC/python2.7-2.7.18=.', '-flto=auto', '-ffat-lto-objects', '-flto=auto', '-ffat-lto-objects', '-fstack-protector-strong', '-fwrapv']
@@ -25,7 +26,7 @@ COMPILER_CC = 'gcc'
 COMPILER_CXX = 'g++'
 CPPPATH_ST = '-I%s'
 CXX = ['/usr/bin/g++']
-CXXFLAGS = ['-w', '-ggdb', '-std=c++17']
+CXXFLAGS = ['-Wno-error', '-ggdb', '-std=c++17']
 CXXFLAGS_GTK2 = ['-pthread']
 CXXFLAGS_MACBUNDLE = ['-fPIC']
 CXXFLAGS_PTHREAD = '-pthread'

@@ -168,17 +168,6 @@ Hello_beacon_App::get_distance_vec()
 }
 
 double
-Hello_beacon_App::get_delivery_ratio(uint32_t neighbor_id)
-{
-	    double best = 0.0;
-	    for (uint32_t ifIndex = 1; ifIndex < m_neighbor_info_by_if.size(); ++ifIndex)
-	    {
-	        best = std::max(best, CalculateDeliveryRatio(neighbor_id, ifIndex));
-	    }
-	    return best;
-}
-
-double
 Hello_beacon_App::get_delivery_ratio(uint32_t neighbor_id, uint32_t ifIndex)
 {
 	    return CalculateDeliveryRatio(neighbor_id, ifIndex);
@@ -368,18 +357,6 @@ Hello_beacon_App::CalculateDeliveryRatio(uint32_t neighbor_id, uint32_t ifIndex)
     return (dr > 1.0) ? 1.0 : dr; // Cap at 1.0
 }
 
-
-double
-Hello_beacon_App::get_df(uint32_t neighbor_id)
-{
-	    double best = 0.0;
-	    for (uint32_t ifIndex = 1; ifIndex < m_neighbor_df_by_if.size(); ++ifIndex)
-	    {
-	        best = std::max(best, get_df(neighbor_id, ifIndex));
-	    }
-	    return best;
-}
-
 double
 Hello_beacon_App::get_df(uint32_t neighbor_id, uint32_t ifIndex)
 {
@@ -390,18 +367,6 @@ Hello_beacon_App::get_df(uint32_t neighbor_id, uint32_t ifIndex)
 	    auto& dfMap = m_neighbor_df_by_if[ifIndex];
 	    auto it = dfMap.find(neighbor_id);
 	    return (it == dfMap.end()) ? 0.0 : it->second;
-}
-
-
-double
-Hello_beacon_App::get_etx(uint32_t neighbor_id)
-{
-	    double best = std::numeric_limits<double>::infinity();
-	    for (uint32_t ifIndex = 1; ifIndex < m_neighbor_info_by_if.size(); ++ifIndex)
-	    {
-	        best = std::min(best, get_etx(neighbor_id, ifIndex));
-	    }
-	    return best;
 }
 
 double
