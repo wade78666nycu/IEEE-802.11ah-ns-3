@@ -36,6 +36,7 @@
 #include "ns3/adhoc-wifi-mac.h"
 #include "ns3/boolean.h"
 #include "ns3/inet-socket-address.h"
+#include "ns3/hello-beacon.h"
 #include "ns3/log.h"
 #include "ns3/node-list.h"
 #include "ns3/pointer.h"
@@ -46,6 +47,7 @@
 #include "ns3/wifi-net-device.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 namespace ns3
@@ -165,6 +167,8 @@ RoutingProtocol::RoutingProtocol()
 	  m_nb(HelloInterval),
 	  m_rreqCount(0),
 	  m_rerrCount(0),
+	  m_rreqWaitTime(MilliSeconds(50)),
+	  m_enableIntermediateRrep(false),
 	  m_htimer(Timer::CANCEL_ON_DESTROY),
 	  m_rreqRateLimitTimer(Timer::CANCEL_ON_DESTROY),
 	  m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
@@ -299,7 +303,17 @@ RoutingProtocol::GetTypeId(void)
 						  "If using grad-pc app, set this to the value of application index",
 						  IntegerValue(-1),
 						  MakeIntegerAccessor(&RoutingProtocol::gradpc_app_idx),
-						  MakeIntegerChecker<int32_t>());
+						  MakeIntegerChecker<int32_t>())
+			.AddAttribute("RreqWaitTime",
+						  "Destination-side wait time after first RREQ to select minimum cumulative ETT",
+						  TimeValue(MilliSeconds(50)),
+						  MakeTimeAccessor(&RoutingProtocol::m_rreqWaitTime),
+						  MakeTimeChecker())
+			.AddAttribute("EnableIntermediateRrep",
+						  "Enable intermediate node RREP replies (disabled for ETT-based route selection)",
+						  BooleanValue(false),
+						  MakeBooleanAccessor(&RoutingProtocol::m_enableIntermediateRrep),
+						  MakeBooleanChecker());
 	return tid;
 }
 
@@ -380,6 +394,80 @@ RoutingProtocol::get_same_channel_Ipv4Address(Ipv4Address channel_addr, Ipv4Addr
 	int32_t interface_id = ipv4->GetInterfaceForAddress(channel_addr);
 	auto curr_ipv4 = get_node_with_address(current_ipv4)->GetObject<Ipv4>();
 	return curr_ipv4->GetAddress(interface_id, 0).GetLocal();
+}
+
+std::string
+RoutingProtocol::BuildRreqKey(Ipv4Address origin, uint32_t requestId) const
+{
+	return Ipv4addr_to_str(origin) + "|" + std::to_string(requestId);
+}
+
+double
+RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel) const
+{
+	bestChannel = 1;
+	if (!m_node)
+	{
+		return std::numeric_limits<double>::infinity();
+	}
+
+	auto it = ip_to_id_map.find(Ipv4addr_to_str(neighbor));
+	if (it == ip_to_id_map.end())
+	{
+		return std::numeric_limits<double>::infinity();
+	}
+
+	Ptr<Hello_beacon_App> helloApp = nullptr;
+	for (uint32_t appIdx = 0; appIdx < m_node->GetNApplications(); ++appIdx)
+	{
+		helloApp = DynamicCast<Hello_beacon_App>(m_node->GetApplication(appIdx));
+		if (helloApp)
+		{
+			break;
+		}
+	}
+
+	if (!helloApp)
+	{
+		return std::numeric_limits<double>::infinity();
+	}
+
+	const uint32_t neighborId = static_cast<uint32_t>(it->second);
+	const uint32_t ifaceCount = m_node->GetNDevices() > 0 ? (m_node->GetNDevices() - 1) : 0;
+	double bestEtt = std::numeric_limits<double>::infinity();
+	for (uint32_t ifIndex = 1; ifIndex <= ifaceCount; ++ifIndex)
+	{
+		double ett = helloApp->get_ett(neighborId, ifIndex);
+		if (!std::isfinite(ett))
+		{
+			continue;
+		}
+		if (ett < bestEtt)
+		{
+			bestEtt = ett;
+			bestChannel = static_cast<uint8_t>(ifIndex);
+		}
+	}
+
+	return bestEtt;
+}
+
+void
+RoutingProtocol::SendDelayedBestReply(std::string key)
+{
+	auto it = m_pendingRreqReply.find(key);
+	if (it == m_pendingRreqReply.end())
+	{
+		return;
+	}
+
+	NS_LOG_DEBUG("Destination delayed-reply timer fired: key=" << key
+					 << " selected cumulative ETT=" << it->second.bestRreq.GetCumulativeEtt()
+					 << " nextHop=" << it->second.toOrigin.GetNextHop()
+					 << " nextHopChannel=" << static_cast<uint32_t>(it->second.toOrigin.GetNextHopChannel()));
+
+	SendReply(it->second.bestRreq, it->second.toOrigin);
+	m_pendingRreqReply.erase(it);
 }
 
 void
@@ -1119,6 +1207,7 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
 	m_requestId++;
 	rreqHeader.SetId(m_requestId);
 	rreqHeader.SetHopCount(0);
+	rreqHeader.SetCumulativeEttMetric(0);
 
 	// Send RREQ as subnet directed broadcast from each interface used by aodv
 	for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin();
@@ -1127,12 +1216,12 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
 	{
 		Ptr<Socket> socket = j->first;
 		Ipv4InterfaceAddress iface = j->second;
-		auto addr = iface.GetLocal();
-		if (addr != get_same_channel_Ipv4Address(dst, addr))
+		int32_t ifaceIndex = m_ipv4->GetInterfaceForAddress(iface.GetLocal());
+		if (ifaceIndex != 1)
 			continue;
 
 		rreqHeader.SetOrigin(iface.GetLocal());
-		m_rreqIdCache.IsDuplicate(iface.GetLocal(), m_requestId);
+		m_rreqIdCache.IsDuplicate(iface.GetLocal(), m_requestId, rreqHeader.GetCumulativeEttMetric());
 
 		Ptr<Packet> packet = Create<Packet>();
 		packet->AddHeader(rreqHeader);
@@ -1317,14 +1406,28 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 
 	uint32_t id = rreqHeader.GetId();
 	Ipv4Address origin = rreqHeader.GetOrigin();
+	uint8_t bestChannelToSender = 1;
+	double bestLinkEtt = GetBestEttToNeighbor(src, bestChannelToSender);
+	if (!std::isfinite(bestLinkEtt))
+	{
+		bestLinkEtt = 1e6;
+	}
+	double prevCumulativeEtt = rreqHeader.GetCumulativeEtt();
+	rreqHeader.SetCumulativeEtt(prevCumulativeEtt + bestLinkEtt);
+	NS_LOG_DEBUG("RecvRequest ETT accumulate: origin=" << origin << " id=" << id << " sender=" << src
+											 << " bestChannel=" << static_cast<uint32_t>(bestChannelToSender)
+											 << " bestLinkEtt=" << bestLinkEtt
+											 << " cumulative(before=" << prevCumulativeEtt
+											 << ", after=" << rreqHeader.GetCumulativeEtt() << ")");
 
 	/*
 	 *  Node checks to determine whether it has received a RREQ with the same Originator IP Address and RREQ ID.
 	 *  If such a RREQ has been received, the node silently discards the newly received RREQ.
 	 */
-	if (m_rreqIdCache.IsDuplicate(origin, id))
+	if (m_rreqIdCache.IsDuplicate(origin, id, rreqHeader.GetCumulativeEttMetric()))
 	{
-		NS_LOG_DEBUG("Ignoring RREQ due to duplicate");
+		NS_LOG_DEBUG("Ignoring RREQ due to non-improving cumulative ETT: origin="
+						 << origin << " id=" << id << " cumulative=" << rreqHeader.GetCumulativeEtt());
 		return;
 	}
 
@@ -1347,8 +1450,6 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 	// channel hop
 	int32_t iif = m_ipv4->GetInterfaceForAddress(receiver); // get interface index
 	Ptr<NetDevice> dev = m_ipv4->GetNetDevice(iif);
-	int32_t channel_hop_iif = iif % (m_node->GetNDevices() - 1) + 1; // interface index after channel hopping
-	Ptr<NetDevice> next_dev = m_ipv4->GetNetDevice(channel_hop_iif);
 
 	RoutingTableEntry toOrigin;
 	if (!m_routingTable.LookupRoute(origin, toOrigin))
@@ -1362,7 +1463,9 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 								   m_ipv4->GetAddress(iif, 0),								  // iface
 								   hop,														  // hops
 								   src,														  // nextHop
-								   Time((2 * NetTraversalTime - 2 * hop * NodeTraversalTime)) // timeLife
+							   Time((2 * NetTraversalTime - 2 * hop * NodeTraversalTime)), // timeLife
+							   rreqHeader.GetCumulativeEtt(),
+							   bestChannelToSender
 		);
 		m_routingTable.AddRoute(newEntry);
 	}
@@ -1382,6 +1485,8 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 		toOrigin.SetOutputDevice(dev);
 		toOrigin.SetInterface(m_ipv4->GetAddress(iif, 0));
 		toOrigin.SetHop(hop);
+		toOrigin.SetPathEtt(rreqHeader.GetCumulativeEtt());
+		toOrigin.SetNextHopChannel(bestChannelToSender);
 		toOrigin.SetLifeTime(
 			std::max(Time(2 * NetTraversalTime - 2 * hop * NodeTraversalTime), toOrigin.GetLifeTime()));
 		m_routingTable.Update(toOrigin);
@@ -1404,7 +1509,9 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 								   m_ipv4->GetAddress(iif, 0),
 								   1,
 								   src,
-								   ActiveRouteTimeout);
+							   ActiveRouteTimeout,
+							   bestLinkEtt,
+							   bestChannelToSender);
 		m_routingTable.AddRoute(newEntry);
 	}
 	else
@@ -1417,6 +1524,8 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 		toNeighbor.SetInterface(m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0));
 		toNeighbor.SetHop(1);
 		toNeighbor.SetNextHop(src);
+		toNeighbor.SetPathEtt(bestLinkEtt);
+		toNeighbor.SetNextHopChannel(bestChannelToSender);
 		m_routingTable.Update(toNeighbor);
 	}
 	m_nb.Update(src, Time(AllowedHelloLoss * HelloInterval));
@@ -1429,8 +1538,36 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 	if (IsMyOwnAddress(rreqHeader.GetDst()))
 	{
 		m_routingTable.LookupRoute(origin, toOrigin);
-		NS_LOG_DEBUG("Send reply since I am the destination");
-		SendReply(rreqHeader, toOrigin);
+		const std::string key = BuildRreqKey(origin, id);
+		auto pendingIt = m_pendingRreqReply.find(key);
+		if (pendingIt == m_pendingRreqReply.end())
+		{
+			PendingRreqReply pending;
+			pending.bestRreq = rreqHeader;
+			pending.toOrigin = toOrigin;
+			pending.timerEvent = Simulator::Schedule(m_rreqWaitTime,
+												 &RoutingProtocol::SendDelayedBestReply,
+												 this,
+												 key);
+			m_pendingRreqReply.emplace(key, pending);
+			NS_LOG_DEBUG("Destination stores first RREQ and waits for better ETT: key="
+						 << key << " cumulative=" << rreqHeader.GetCumulativeEtt()
+						 << " waitMs=" << m_rreqWaitTime.GetMilliSeconds());
+		}
+		else if (rreqHeader.GetCumulativeEttMetric() < pendingIt->second.bestRreq.GetCumulativeEttMetric())
+		{
+			double prevBest = pendingIt->second.bestRreq.GetCumulativeEtt();
+			pendingIt->second.bestRreq = rreqHeader;
+			pendingIt->second.toOrigin = toOrigin;
+			NS_LOG_DEBUG("Destination updates best pending RREQ by cumulative ETT: key="
+						 << key << " oldBest=" << prevBest << " newBest=" << rreqHeader.GetCumulativeEtt());
+		}
+		else
+		{
+			NS_LOG_DEBUG("Destination keeps existing best RREQ: key=" << key
+						 << " best=" << pendingIt->second.bestRreq.GetCumulativeEtt()
+						 << " candidate=" << rreqHeader.GetCumulativeEtt());
+		}
 		return;
 	}
 	/*
@@ -1462,7 +1599,7 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 		if ((rreqHeader.GetUnknownSeqno() || (int32_t(toDst.GetSeqNo()) - int32_t(rreqHeader.GetDstSeqno()) >= 0)) &&
 			toDst.GetValidSeqNo())
 		{
-			if (!rreqHeader.GetDestinationOnly() && toDst.GetFlag() == VALID)
+			if (m_enableIntermediateRrep && !rreqHeader.GetDestinationOnly() && toDst.GetFlag() == VALID)
 			{
 				m_routingTable.LookupRoute(origin, toOrigin);
 				SendReplyByIntermediateNode(toDst, toOrigin, rreqHeader.GetGratiousRrep());
@@ -1473,15 +1610,14 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 		}
 	}
 
-	Ipv4InterfaceAddress channel_hop_iface = m_ipv4->GetAddress(channel_hop_iif, 0);
 	for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin();
 		 j != m_socketAddresses.end();
 		 ++j)
 	{
 		Ptr<Socket> socket = j->first;
 		Ipv4InterfaceAddress iface = j->second;
-		// instead of broadcasting on every channel, broadcast at the next channel we are hopping to
-		if (iface != channel_hop_iface)
+		int32_t ifaceIndex = m_ipv4->GetInterfaceForAddress(iface.GetLocal());
+		if (ifaceIndex != 1)
 			continue;
 
 		Ptr<Packet> packet = Create<Packet>();
@@ -1644,6 +1780,26 @@ RoutingProtocol::RecvReply(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address send
 	 * -  and the destination sequence number is the Destination Sequence Number in the RREP message.
 	 */
 	Ptr<NetDevice> dev = m_ipv4->GetNetDevice(m_ipv4->GetInterfaceForAddress(receiver));
+	uint8_t bestChannelToSender = 1;
+	double bestLinkEtt = GetBestEttToNeighbor(sender, bestChannelToSender);
+	if (!std::isfinite(bestLinkEtt))
+	{
+		bestLinkEtt = 1e6;
+	}
+	double replyPathEtt = std::numeric_limits<double>::infinity();
+	RoutingTableEntry toOriginForEtt;
+	if (m_routingTable.LookupRoute(rrepHeader.GetOrigin(), toOriginForEtt))
+	{
+		replyPathEtt = toOriginForEtt.GetPathEtt();
+	}
+	if (!std::isfinite(replyPathEtt))
+	{
+		replyPathEtt = bestLinkEtt;
+	}
+	else
+	{
+		replyPathEtt += bestLinkEtt;
+	}
 	RoutingTableEntry newEntry(/*device=*/dev,
 							   /*dst=*/dst,
 							   /*validSeqNo=*/true,
@@ -1651,7 +1807,9 @@ RoutingProtocol::RecvReply(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address send
 							   /*iface=*/m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0),
 							   /*hop=*/hop,
 							   /*nextHop=*/sender,
-							   /*lifeTime=*/rrepHeader.GetLifeTime());
+							   /*lifeTime=*/rrepHeader.GetLifeTime(),
+							   /*pathEtt=*/replyPathEtt,
+							   /*nextHopChannel=*/bestChannelToSender);
 	RoutingTableEntry toDst;
 	if (m_routingTable.LookupRoute(dst, toDst))
 	{
@@ -1676,9 +1834,8 @@ RoutingProtocol::RecvReply(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address send
 			{
 				m_routingTable.Update(newEntry);
 			}
-			// (iv)  the sequence numbers are the same, and the New Hop Count is smaller than the hop count in route
-			// table entry.
-			else if ((rrepHeader.GetDstSeqno() == toDst.GetSeqNo()) && (hop < toDst.GetHop()))
+			// (iv) the sequence numbers are the same, and the new path ETT is smaller.
+			else if ((rrepHeader.GetDstSeqno() == toDst.GetSeqNo()) && (newEntry.GetPathEtt() < toDst.GetPathEtt()))
 			{
 				m_routingTable.Update(newEntry);
 			}

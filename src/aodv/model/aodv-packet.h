@@ -120,7 +120,8 @@ class RreqHeader : public Header
 			   Ipv4Address dst = Ipv4Address(),
 			   uint32_t dstSeqNo = 0,
 			   Ipv4Address origin = Ipv4Address(),
-			   uint32_t originSeqNo = 0);
+			   uint32_t originSeqNo = 0,
+			   uint32_t cumulativeEtt = 0);
 
 	// Header serialization/deserialization
 	static TypeId GetTypeId();
@@ -191,6 +192,31 @@ class RreqHeader : public Header
 		return m_originSeqNo;
 	}
 
+	void SetCumulativeEttMetric(uint32_t metric)
+	{
+		m_cumulativeEtt = metric;
+	}
+
+	uint32_t GetCumulativeEttMetric() const
+	{
+		return m_cumulativeEtt;
+	}
+
+	void SetCumulativeEtt(double ett)
+	{
+		if (ett <= 0.0)
+		{
+			m_cumulativeEtt = 0;
+			return;
+		}
+		m_cumulativeEtt = static_cast<uint32_t>(ett * 1000.0);
+	}
+
+	double GetCumulativeEtt() const
+	{
+		return static_cast<double>(m_cumulativeEtt) / 1000.0;
+	}
+
 	// Flags
 	void SetGratiousRrep(bool f);
 	bool GetGratiousRrep() const;
@@ -210,6 +236,7 @@ class RreqHeader : public Header
 	uint32_t m_dstSeqNo;	///< Destination Sequence Number
 	Ipv4Address m_origin;	///< Originator IP Address
 	uint32_t m_originSeqNo; ///< Source Sequence Number
+	uint32_t m_cumulativeEtt; ///< Cumulative path ETT (scaled by 1000)
 };
 
 std::ostream& operator<<(std::ostream& os, const RreqHeader&);

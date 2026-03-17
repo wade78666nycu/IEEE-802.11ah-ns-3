@@ -35,6 +35,7 @@
 #include "ns3/timer.h"
 
 #include <cassert>
+#include <limits>
 #include <map>
 #include <stdint.h>
 #include <sys/types.h>
@@ -70,7 +71,9 @@ class RoutingTableEntry
 					  Ipv4InterfaceAddress iface = Ipv4InterfaceAddress(),
 					  uint16_t hops = 0,
 					  Ipv4Address nextHop = Ipv4Address(),
-					  Time lifetime = Simulator::Now());
+					  Time lifetime = Simulator::Now(),
+					  double pathEtt = std::numeric_limits<double>::infinity(),
+					  uint8_t nextHopChannel = 1);
 
 	~RoutingTableEntry();
 
@@ -241,6 +244,26 @@ class RoutingTableEntry
 		return m_blackListTimeout;
 	}
 
+	void SetPathEtt(double pathEtt)
+	{
+		m_pathEtt = pathEtt;
+	}
+
+	double GetPathEtt() const
+	{
+		return m_pathEtt;
+	}
+
+	void SetNextHopChannel(uint8_t channel)
+	{
+		m_nextHopChannel = channel;
+	}
+
+	uint8_t GetNextHopChannel() const
+	{
+		return m_nextHopChannel;
+	}
+
 	/// RREP_ACK timer
 	Timer m_ackTimer;
 
@@ -291,6 +314,10 @@ class RoutingTableEntry
 	bool m_blackListState;
 	/// Time for which the node is put into the blacklist
 	Time m_blackListTimeout;
+	/// Path metric used for route comparison in ETT mode
+	double m_pathEtt;
+	/// Preferred outgoing channel when forwarding to next hop
+	uint8_t m_nextHopChannel;
 };
 
 /**

@@ -46,6 +46,7 @@ class Application;
 	    double get_delivery_ratio(uint32_t neighbor_id, uint32_t ifIndex);
 	    double get_df(uint32_t neighbor_id, uint32_t ifIndex);
 	    double get_etx(uint32_t neighbor_id, uint32_t ifIndex);
+	    double get_ett(uint32_t neighbor_id, uint32_t ifIndex);
 	    void set_max_packet_count(const uint32_t max_count);
 
 	    bool enable_print_neighbor;

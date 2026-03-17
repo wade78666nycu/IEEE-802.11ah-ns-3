@@ -113,7 +113,7 @@ export_etx_matrix(const NodeContainer& node_container)
 		}
 		export_file << "\n";
 
-		// Write ETX matrix (rows = senders, columns = receivers)
+		// Write ETT matrix (rows = senders, columns = receivers)
 		for (unsigned int i = 0; i < num_nodes; ++i)
 		{
 			export_file << i;  // sender node ID
@@ -136,14 +136,14 @@ export_etx_matrix(const NodeContainer& node_container)
 				export_file << ",";
 				if (hello_app != nullptr && i != j)
 				{
-					double etx = hello_app->get_etx(j, ifIndex);
-					if (std::isinf(etx))
+					double ett = hello_app->get_ett(j, ifIndex);
+					if (std::isinf(ett))
 					{
 						export_file << "INF";
 					}
 					else
 					{
-						export_file << std::fixed << std::setprecision(2) << etx;
+						export_file << std::fixed << std::setprecision(6) << ett;
 					}
 				}
 				// else: empty cell if sender == receiver or app not found

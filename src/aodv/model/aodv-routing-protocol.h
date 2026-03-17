@@ -42,6 +42,7 @@
 #include "ns3/random-variable-stream.h"
 
 #include "ns3/grad-pc.h"
+#include "ns3/event-id.h"
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -229,6 +230,20 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	uint16_t m_rreqCount;
 	/// Number of RERRs used for RERR rate control
 	uint16_t m_rerrCount;
+	/// Wait time at destination after first RREQ to select lowest cumulative ETT path.
+	Time m_rreqWaitTime;
+	/// Enable/disable intermediate-node RREP generation.
+	bool m_enableIntermediateRrep;
+
+	struct PendingRreqReply
+	{
+		RreqHeader bestRreq;
+		RoutingTableEntry toOrigin;
+		EventId timerEvent;
+	};
+
+	/// key: "origin-ip|rreq-id"
+	std::map<std::string, PendingRreqReply> m_pendingRreqReply;
 
   private:
 	/// Start protocol operation
@@ -239,6 +254,12 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	Ptr<Node> get_node_with_address(Ipv4Address ipv4_addr) const;
 	/// get the Ipv4Address that uses the same channel as channel_addr
 	Ipv4Address get_same_channel_Ipv4Address(Ipv4Address channel_addr, Ipv4Address current_ipv4);
+	/// Build key for pending destination-side delayed RREP selection.
+	std::string BuildRreqKey(Ipv4Address origin, uint32_t requestId) const;
+	/// Resolve best data channel ETT to a specific neighbor.
+	double GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel) const;
+	/// Timer callback for delayed destination-side RREP.
+	void SendDelayedBestReply(std::string key);
     /// check if there is enough power to send to next node since the power we use on each channel is unsymmetric
     /// if not enough power to send to next node, add tag to packet so gradpc-wifi-manager can adjust power
     void check_valid_link(Ptr<Packet> packet, Ptr<NetDevice> dev, Ipv4Address nextHop);

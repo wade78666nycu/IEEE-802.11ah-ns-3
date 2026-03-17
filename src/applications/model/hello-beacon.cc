@@ -380,6 +380,18 @@ Hello_beacon_App::get_etx(uint32_t neighbor_id, uint32_t ifIndex)
 	    return 1.0 / (dr * df);
 }
 
+double
+Hello_beacon_App::get_ett(uint32_t neighbor_id, uint32_t ifIndex)
+{
+    double etx = get_etx(neighbor_id, ifIndex);
+    if (std::isinf(etx)) {
+        return std::numeric_limits<double>::infinity();
+    }
+    double packet_size_bits = static_cast<double>(m_packetSize) * 8.0;
+    double bandwidth_bps = static_cast<double>(m_data_rate.GetBitRate());
+    return etx * packet_size_bits / bandwidth_bps * 1000.0; // Convert to milliseconds
+}
+
 void
 Hello_beacon_App::send_packet(Ptr<Socket> txSocket, Ipv4Address destination)
 {

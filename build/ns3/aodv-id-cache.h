@@ -54,6 +54,12 @@ class IdCache
 
 	/// Check that entry (addr, id) exists in cache. Add entry, if it doesn't exist.
 	bool IsDuplicate(Ipv4Address addr, uint32_t id);
+	/**
+	 * Check duplicate with path metric.
+	 * If (addr, id) exists and metric is not better, returns true.
+	 * If metric is better (smaller), update cached best metric and returns false.
+	 */
+	bool IsDuplicate(Ipv4Address addr, uint32_t id, uint32_t metric);
 	/// Remove all expired entries
 	void Purge();
 	/// Return number of entries in cache
@@ -79,6 +85,8 @@ class IdCache
 		Ipv4Address m_context;
 		/// The id
 		uint32_t m_id;
+		/// Best (smallest) path metric observed for this (context, id)
+		uint32_t m_metric;
 		/// When record will expire
 		Time m_expire;
 	};

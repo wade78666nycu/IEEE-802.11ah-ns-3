@@ -28,6 +28,7 @@
 #include "aodv-id-cache.h"
 
 #include <algorithm>
+#include <limits>
 
 namespace ns3
 {
@@ -36,11 +37,27 @@ namespace aodv
 bool
 IdCache::IsDuplicate(Ipv4Address addr, uint32_t id)
 {
+	return IsDuplicate(addr, id, std::numeric_limits<uint32_t>::max());
+}
+
+bool
+IdCache::IsDuplicate(Ipv4Address addr, uint32_t id, uint32_t metric)
+{
 	Purge();
-	for (std::vector<UniqueId>::const_iterator i = m_idCache.begin(); i != m_idCache.end(); ++i)
+	for (std::vector<UniqueId>::iterator i = m_idCache.begin(); i != m_idCache.end(); ++i)
+	{
 		if (i->m_context == addr && i->m_id == id)
+		{
+			i->m_expire = m_lifetime + Simulator::Now();
+			if (metric < i->m_metric)
+			{
+				i->m_metric = metric;
+				return false;
+			}
 			return true;
-	struct UniqueId uniqueId = {addr, id, m_lifetime + Simulator::Now()};
+		}
+	}
+	struct UniqueId uniqueId = {addr, id, metric, m_lifetime + Simulator::Now()};
 	m_idCache.push_back(uniqueId);
 	return false;
 }

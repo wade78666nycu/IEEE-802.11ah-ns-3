@@ -18,6 +18,30 @@
 #include <cmath>
 using namespace ns3;
 
+static void
+TraceWifiTxRate(std::string context,
+                const Ptr<const Packet> packet,
+                uint16_t channelFreqMhz,
+                uint16_t channelNumber,
+                uint32_t rate,
+                bool isShortPreamble,
+                WifiTxVector txvector)
+{
+	// Filter small control frames; focus on data transmissions.
+	if (packet->GetSize() < 200)
+	{
+		return;
+	}
+
+	const double mbps = static_cast<double>(txvector.GetMode().GetDataRate()) / 1e6;
+	std::cout << "[tx-rate] " << context << " ch=" << channelNumber
+			  << " mode=" << txvector.GetMode().GetUniqueName()
+			  << " rate=" << std::fixed << std::setprecision(3) << mbps << "Mbps"
+			  << " size=" << packet->GetSize() << "B"
+			  << " preamble=" << (isShortPreamble ? "short" : "long")
+			  << std::endl;
+}
+
 void
 export_node_position(const NodeContainer& node_container)
 {
@@ -74,7 +98,7 @@ export_node_power(const NodeContainer& node_container)
 }
 
 void
-export_etx_matrix(const NodeContainer& node_container)
+export_ett_matrix(const NodeContainer& node_container)
 {
 	const unsigned int num_nodes = node_container.GetN();
 	if (num_nodes == 0)
@@ -104,7 +128,7 @@ export_etx_matrix(const NodeContainer& node_container)
 		}
 		export_file << "\n";
 
-		// Write ETX matrix (rows = senders, columns = receivers)
+		// Write ETT matrix (rows = senders, columns = receivers)
 		for (unsigned int i = 0; i < num_nodes; ++i)
 		{
 			export_file << i;  // sender node ID
@@ -127,14 +151,14 @@ export_etx_matrix(const NodeContainer& node_container)
 				export_file << ",";
 				if (hello_app != nullptr && i != j)
 				{
-					double etx = hello_app->get_etx(j, ifIndex);
-					if (std::isinf(etx))
+					double ett = hello_app->get_ett(j, ifIndex);
+					if (std::isinf(ett))
 					{
 						export_file << "INF";
 					}
 					else
 					{
-						export_file << std::fixed << std::setprecision(2) << etx;
+						export_file << std::fixed << std::setprecision(2) << ett;
 					}
 				}
 				// else: empty cell if sender == receiver or app not found
@@ -232,7 +256,6 @@ NS_LOG_COMPONENT_DEFINE("Lab");
 int
 main(int argc, char* argv[])
 {
-	std::string phy_mode("OfdmRate300KbpsBW1MHz");
 	SeedManager::SetSeed(2);
 
 	LogComponentEnable("Lab", LOG_LEVEL_INFO);
@@ -279,11 +302,10 @@ main(int argc, char* argv[])
 
 	WifiHelper wifi;
 	wifi.SetStandard(WIFI_PHY_STANDARD_80211ah);
-	wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
-								 "DataMode",
-								 StringValue(phy_mode),
-								 "ControlMode",
-								 StringValue(phy_mode));
+	// MinstrelWifiManager: adapts MCS based on per-station packet success/retry
+	// statistics — no CalculateSnr() needed, compatible with 802.11ah S1G PHY.
+	wifi.SetRemoteStationManager("ns3::ArfWifiManager");
+
 	// device_vec stores devices that uses different radios(channels)
 	std::vector<NetDeviceContainer> device_vec(device_num);
 
@@ -312,7 +334,10 @@ main(int argc, char* argv[])
 		//if (i == 0)
 		//wifiPhy.EnablePcap("lab", device_vec.at(i));
 	}
-
+	if(show_log){
+		//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/MonitorSnifferTx",
+					//MakeCallback(&TraceWifiTxRate));
+	}
 	// need to install the InternetStackHelper before installing dsr
 	InternetStackHelper internet;
 	if (routing_method == "dsr") {
@@ -339,7 +364,7 @@ main(int argc, char* argv[])
 		internet.SetRoutingHelper(aodv_helper); // has effect on the next Install ()
 		internet.Install(node_container);
 		if (show_log) {
-			//LogComponentEnable("AodvRoutingProtocol", LOG_LEVEL_ALL);
+			LogComponentEnable("AodvRoutingProtocol", LogLevel(LOG_LEVEL_DEBUG | LOG_PREFIX_TIME | LOG_PREFIX_NODE));
 		}
 	} else {
 		NS_ASSERT_MSG(false, "routing method not found!"); 
@@ -364,10 +389,14 @@ main(int argc, char* argv[])
 
     std::vector<unsigned int> src_node_vec;
     std::vector<unsigned int> dst_node_vec;
-	for (int i{}; i < node_per_row; ++i) {
+	/*for (int i{}; i < node_per_row; ++i) {
         src_node_vec.emplace_back(node_per_row + i);
         dst_node_vec.emplace_back(num_nodes - (2 * node_per_row) + i);
-    }
+    }*/
+   src_node_vec.emplace_back(1);
+   src_node_vec.emplace_back(0);
+   dst_node_vec.emplace_back(23); 
+   dst_node_vec.emplace_back(24); 
 
 	const unsigned int src_port_num = 9;
 	const unsigned int dst_port_num = 80;
@@ -389,14 +418,11 @@ main(int argc, char* argv[])
 	Time grad_pc_start_time = Seconds(0);
 	Time grad_pc_stop_time = Seconds(0);
 	if (enable_hello) {
-		if (show_log)
-		{
-			std::cout << "[grid-exp] "<< routing_method << " hello=on power_control=" << (enable_power_control ? "on" : "off") << "\n";
-		}
+		std::cout << "[grid-exp] "<< routing_method << " hello=on power_control=" << (enable_power_control ? "on" : "off") << "\n";
 		hello_beacon_start_time = Seconds(1.0); // [second]
 		hello_beacon_stop_time = Seconds(10.0); // [second]
 		if (enable_power_control) {
-			grad_pc_start_time = Seconds(11.0);	 // [second]
+			grad_pc_start_time = Seconds(11.0);	 // [second]g
 		grad_pc_stop_time = Seconds(11.5);		 // [second]
 	}
 	Time control_stop_time = enable_power_control ? grad_pc_stop_time : hello_beacon_stop_time;
@@ -411,13 +437,13 @@ main(int argc, char* argv[])
 		GradPC_App::GradPC_type func_type;
 		if (gradpc_type == 1) {
 			func_type = GradPC_App::GradPC_type::torque;
-			if (show_log) std::cout << "[grid-exp] power_control=GradPC torque\n";
+			std::cout << "[grid-exp] power_control=GradPC torque\n";
 		} else if (gradpc_type == 2) {
 			func_type = GradPC_App::GradPC_type::proportional;
-			if (show_log) std::cout << "[grid-exp] power_control=GradPC proportional\n";
+			std::cout << "[grid-exp] power_control=GradPC proportional\n";
 		} else if (gradpc_type == 3) {
 			func_type = GradPC_App::GradPC_type::logarithmic;
-			if (show_log) std::cout << "[grid-exp] power_control=GradPC logarithmic\n";
+			std::cout << "[grid-exp] power_control=GradPC logarithmic\n";
 		} else {
 			NS_ASSERT_MSG(false, "Not a valid gradpc_type option");
 		}
@@ -459,10 +485,7 @@ main(int argc, char* argv[])
 		}
 	}
 	} else {
-		if (show_log)
-		{
-			std::cout << "[grid-exp] hello=off (default), devices=" << device_num << "\n";
-		}
+		std::cout << "[grid-exp] hello=off (default), devices=" << device_num << "\n";
 	}
 	
 	Time recv_pkt_start_time =
@@ -522,8 +545,8 @@ main(int argc, char* argv[])
 		export_node_power(node_container);
 	}
 	
-	// Export ETX matrix
-	export_etx_matrix(node_container);
+	// Export ETT matrix
+	export_ett_matrix(node_container);
 
 	unsigned long total_recv_packets = 0;
 	for (int i{0}; i < dst_node_vec.size(); ++i)

@@ -141,7 +141,8 @@ RreqHeader::RreqHeader(uint8_t flags,
 					   Ipv4Address dst,
 					   uint32_t dstSeqNo,
 					   Ipv4Address origin,
-					   uint32_t originSeqNo)
+					   uint32_t originSeqNo,
+					   uint32_t cumulativeEtt)
 	: m_flags(flags),
 	  m_reserved(reserved),
 	  m_hopCount(hopCount),
@@ -149,7 +150,8 @@ RreqHeader::RreqHeader(uint8_t flags,
 	  m_dst(dst),
 	  m_dstSeqNo(dstSeqNo),
 	  m_origin(origin),
-	  m_originSeqNo(originSeqNo)
+	  m_originSeqNo(originSeqNo),
+	  m_cumulativeEtt(cumulativeEtt)
 {
 }
 
@@ -172,7 +174,7 @@ RreqHeader::GetInstanceTypeId() const
 uint32_t
 RreqHeader::GetSerializedSize() const
 {
-	return 23;
+	return 27;
 }
 
 void
@@ -186,6 +188,7 @@ RreqHeader::Serialize(Buffer::Iterator i) const
 	i.WriteHtonU32(m_dstSeqNo);
 	WriteTo(i, m_origin);
 	i.WriteHtonU32(m_originSeqNo);
+	i.WriteHtonU32(m_cumulativeEtt);
 }
 
 uint32_t
@@ -200,6 +203,7 @@ RreqHeader::Deserialize(Buffer::Iterator start)
 	m_dstSeqNo = i.ReadNtohU32();
 	ReadFrom(i, m_origin);
 	m_originSeqNo = i.ReadNtohU32();
+	m_cumulativeEtt = i.ReadNtohU32();
 
 	uint32_t dist = i.GetDistanceFrom(start);
 	NS_ASSERT(dist == GetSerializedSize());
@@ -212,7 +216,8 @@ RreqHeader::Print(std::ostream& os) const
 	os << "RREQ ID " << m_requestID << " destination: ipv4 " << m_dst << " sequence number " << m_dstSeqNo
 	   << " source: ipv4 " << m_origin << " sequence number " << m_originSeqNo << " flags:"
 	   << " Gratuitous RREP " << (*this).GetGratiousRrep() << " Destination only " << (*this).GetDestinationOnly()
-	   << " Unknown sequence number " << (*this).GetUnknownSeqno();
+	   << " Unknown sequence number " << (*this).GetUnknownSeqno() << " cumulative ETT "
+	   << GetCumulativeEtt();
 }
 
 std::ostream&
@@ -272,7 +277,7 @@ RreqHeader::operator==(const RreqHeader& o) const
 {
 	return (m_flags == o.m_flags && m_reserved == o.m_reserved && m_hopCount == o.m_hopCount &&
 			m_requestID == o.m_requestID && m_dst == o.m_dst && m_dstSeqNo == o.m_dstSeqNo && m_origin == o.m_origin &&
-			m_originSeqNo == o.m_originSeqNo);
+			m_originSeqNo == o.m_originSeqNo && m_cumulativeEtt == o.m_cumulativeEtt);
 }
 
 //-----------------------------------------------------------------------------
