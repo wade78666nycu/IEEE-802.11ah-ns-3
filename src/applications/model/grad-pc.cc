@@ -196,7 +196,9 @@ GradPC_App::gradPC_proportional_power(const int device_idx, const unsigned int n
     int neighbor_upperbound = std::max(1, static_cast<int>((1 - delta) * neighbor_size));
     //neighbor_upperbound = std::min(static_cast<int>(neighbor_size), neighbor_upperbound);
     //NS_LOG_DEBUG("neighbor_size: " << neighbor_size << " neighbor_upperbound: " << neighbor_upperbound);
-    const float tx_distance = m_distance_vec[neighbor_upperbound - 1].first + m_extra_tx_distance;
+    const float selected_raw_distance = m_distance_vec[neighbor_upperbound - 1].first;
+    const uint32_t selected_neighbor_id = m_distance_vec[neighbor_upperbound - 1].second;
+    const float tx_distance = selected_raw_distance + m_extra_tx_distance;
 
     // update neighbors
     std::unordered_set<uint32_t> neighbor_set = update_neighbor_set(neighbor_upperbound, tx_distance);
@@ -205,7 +207,18 @@ GradPC_App::gradPC_proportional_power(const int device_idx, const unsigned int n
         m_neighbor_list.resize(device_idx + 1);
     }
     m_neighbor_list[device_idx] = std::move(neighbor_set);
-    return calculate_tx_power(tx_distance);
+    const float tx_power = calculate_tx_power(tx_distance);
+    NS_LOG_UNCOND("[GradPCII] node=" << GetNode()->GetId()
+                                      << " deviceIdx=" << device_idx
+                                      << " inputNeighbors=" << neighbor_size
+                                      << " upperbound=" << neighbor_upperbound
+                                      << " selectedNeighbor=" << selected_neighbor_id
+                                      << " rawDistance=" << selected_raw_distance
+                                      << " extraDistance=" << m_extra_tx_distance
+                                      << " txDistance=" << tx_distance
+                                      << " resultNeighbors=" << m_neighbor_list[device_idx].size()
+                                      << " txPower(dBm)=" << tx_power);
+    return tx_power;
 }
 
 // GradPCI
@@ -365,11 +378,10 @@ GradPC_App::set_tx_power(float tx_power_dBm, const unsigned int device_idx)
         tx_power_dBm = maxPower;
         tx_power_valid = false; // indicate it was adjusted
     }
-    wifi_phy->SetTxPowerStart(tx_power_dBm); // adjust TxPowerStart for a smaller power
-    if (wifi_phy->GetNTxPower() == 1) {
-        // only 1 power level, TxPowerEnd should be equal to TxPowerStart
-        wifi_phy->SetTxPowerEnd(tx_power_dBm); // keep as default power
-    }
+    // Force a single PHY power level so all outgoing frames on this interface,
+    // including hello beacons, use the GradPC-computed tx power.
+    wifi_phy->SetTxPowerStart(tx_power_dBm);
+    wifi_phy->SetTxPowerEnd(tx_power_dBm);
     return tx_power_valid;
 }
 
@@ -384,7 +396,11 @@ GradPC_App::adjust_tx_power(const short gradPC_func_type, const unsigned int dev
 
     GradPC_type func_type = static_cast<GradPC_type>(gradPC_func_type);
     float tx_power {};
-    const unsigned int neighbor_size = m_neighbor_list[device_idx].size();
+    // Build layered power control: channel i is derived from the previous layer
+    // so each next channel can further shrink coverage instead of recomputing
+    // from the same original neighbor set.
+    const unsigned int prev_idx = (device_idx == 0) ? 0 : (device_idx - 1);
+    const unsigned int neighbor_size = m_neighbor_list[prev_idx].size();
     if (func_type == GradPC_type::logarithmic)
     {
         tx_power = gradPC_log_power(device_idx, neighbor_size);

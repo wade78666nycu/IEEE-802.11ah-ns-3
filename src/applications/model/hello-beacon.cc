@@ -3,7 +3,43 @@
 #include <limits>
 
 using namespace ns3;
-static Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+static void
+OnHelloPhyTxTrace(Hello_beacon_App* app,
+				  uint32_t ifIndex,
+				  const Ptr<const Packet> packet,
+				  uint16_t channelFreqMhz,
+				  uint16_t channelNumber,
+				  uint32_t rate,
+				  bool isShortPreamble,
+				  WifiTxVector txvector)
+{
+	(void)packet;
+	(void)channelFreqMhz;
+	(void)channelNumber;
+	(void)rate;
+	(void)isShortPreamble;
+
+	// Keep only data-bearing traffic samples:
+	// - MAC data frames
+	// - unicast destination (exclude broadcast/multicast control/hello traffic)
+	// - reasonably large payload (exclude most control packets)
+	if (!packet)
+	{
+		return;
+	}
+	Ptr<Packet> copy = packet->Copy();
+	WifiMacHeader wifiHdr;
+	if (copy->PeekHeader(wifiHdr) == 0)
+	{
+		return;
+	}
+	if (!wifiHdr.IsData() || wifiHdr.GetAddr1().IsGroup() || packet->GetSize() < 200)
+	{
+		return;
+	}
+
+	app->update_phy_rate_sample(ifIndex, txvector);
+}
 
 NS_LOG_COMPONENT_DEFINE("HelloBeacon");
 
@@ -22,6 +58,7 @@ Hello_beacon_App::Hello_beacon_App()
 	      m_packet_count(0),
 	      m_max_packet_count(1)
 {
+    m_uv = CreateObject<UniformRandomVariable>();
 }
 
 Hello_beacon_App::Hello_beacon_App(const unsigned int num_nodes)
@@ -75,8 +112,8 @@ Hello_beacon_App::set_backoff_limit(const unsigned int max_backoff_slot,
 {
     const double min_slot = static_cast<double>(std::min(min_backoff_slot, max_backoff_slot));
     const double max_slot = static_cast<double>(std::max(min_backoff_slot, max_backoff_slot));
-    uv->SetAttribute("Min", DoubleValue(min_slot));
-    uv->SetAttribute("Max", DoubleValue(max_slot));
+    m_uv->SetAttribute("Min", DoubleValue(min_slot));
+    m_uv->SetAttribute("Max", DoubleValue(max_slot));
 }
 
 void
@@ -128,11 +165,30 @@ Hello_beacon_App::set_socket()
 	            continue;
 	        }
 
-	        Ipv4Address localAddr = ipv4->GetAddress(ifIndex, 0).GetLocal();
 	        Ptr<NetDevice> dev = ipv4->GetNetDevice(ifIndex);
 	        if (!dev)
 	        {
 	            continue;
+	        }
+
+	        if (ifIndex >= m_phy_trace_connected_by_if.size())
+	        {
+	            m_phy_trace_connected_by_if.resize(ifIndex + 1, false);
+	        }
+	        if (!m_phy_trace_connected_by_if[ifIndex])
+	        {
+	            Ptr<WifiNetDevice> wifiDev = DynamicCast<WifiNetDevice>(dev);
+	            if (wifiDev)
+	            {
+	                Ptr<WifiPhy> phy = wifiDev->GetPhy();
+	                if (phy)
+	                {
+	                    phy->TraceConnectWithoutContext(
+	                        "MonitorSnifferTx",
+	                        MakeBoundCallback(&OnHelloPhyTxTrace, this, ifIndex));
+	                    m_phy_trace_connected_by_if[ifIndex] = true;
+	                }
+	            }
 	        }
 
 	        // TX socket bound to this interface/device.
@@ -153,6 +209,31 @@ Hello_beacon_App::set_socket()
 	    m_neighbor_set_by_if.assign(maxIfIndex + 1, {});
 	    m_neighbor_info_by_if.assign(maxIfIndex + 1, {});
 	    m_neighbor_df_by_if.assign(maxIfIndex + 1, {});
+	    m_last_phy_rate_bps_by_if.assign(maxIfIndex + 1,
+	                                    static_cast<double>(m_data_rate.GetBitRate()));
+	    if (m_phy_trace_connected_by_if.size() < maxIfIndex + 1)
+	    {
+	        m_phy_trace_connected_by_if.resize(maxIfIndex + 1, false);
+	    }
+}
+
+void
+Hello_beacon_App::update_phy_rate_sample(uint32_t ifIndex, const WifiTxVector& txvector)
+{
+	if (ifIndex == 0)
+	{
+		return;
+	}
+	if (ifIndex >= m_last_phy_rate_bps_by_if.size())
+	{
+		m_last_phy_rate_bps_by_if.resize(ifIndex + 1,
+		                                 static_cast<double>(m_data_rate.GetBitRate()));
+	}
+	const double bps = static_cast<double>(txvector.GetMode().GetDataRate());
+	if (bps > 0.0)
+	{
+		m_last_phy_rate_bps_by_if[ifIndex] = bps;
+	}
 }
 
 std::unordered_set<uint32_t>
@@ -176,13 +257,21 @@ Hello_beacon_App::get_delivery_ratio(uint32_t neighbor_id, uint32_t ifIndex)
 Time
 Hello_beacon_App::get_backoff_time()
 {
-    return m_backoff_slot_time * uv->GetInteger();
+    return m_backoff_slot_time * m_uv->GetInteger();
 }
 
 void
 Hello_beacon_App::StartApplication()
 {
-    if (uv->GetMin() < 0.0 || uv->GetMax() * m_backoff_slot_time > m_hello_interval)
+	// Initialize local position before any receive callback may compute distance.
+	Ptr<Node> node = GetNode();
+	if (node && node->GetObject<MobilityModel>())
+	{
+		const Vector pos = node->GetObject<MobilityModel>()->GetPosition();
+		m_node_position = Vector2D(pos.x, pos.y);
+	}
+
+    if (m_uv->GetMin() < 0.0 || m_uv->GetMax() * m_backoff_slot_time > m_hello_interval)
     {
         // if min/max values are not valid, set to default values
         const double max_backoff_slot = 32;
@@ -208,6 +297,8 @@ Hello_beacon_App::StartApplication()
 void
 Hello_beacon_App::StopApplication()
 {
+    if (!m_running)
+        return; // already stopped; prevent double-scheduling a restart
     //NS_LOG_DEBUG("Hello beacon app stop");
     m_running = false;
     if (m_send_event.IsRunning())
@@ -346,14 +437,21 @@ Hello_beacon_App::CalculateDeliveryRatio(uint32_t neighbor_id, uint32_t ifIndex)
 	    if (info.find(neighbor_id) == info.end()) {
 	        return 0.0;
 	    }
-	    
-	    uint32_t received_count = info[neighbor_id].size();
-	    
-	    if (m_max_packet_count == 0) {
+
+	    const auto& seqSet = info[neighbor_id];
+	    if (seqSet.empty()) {
 	        return 0.0;
 	    }
-    
-    double dr = static_cast<double>(received_count) / static_cast<double>(m_max_packet_count);
+
+	    const uint32_t received_count = seqSet.size();
+	    // Sequence numbers start from 0 each cycle, so maxSeq + 1 approximates
+	    // the number of packets the neighbor has actually sent in this round.
+	    const uint32_t sent_count_est = (*seqSet.rbegin()) + 1;
+	    if (sent_count_est == 0) {
+	        return 0.0;
+	    }
+
+    double dr = static_cast<double>(received_count) / static_cast<double>(sent_count_est);
     return (dr > 1.0) ? 1.0 : dr; // Cap at 1.0
 }
 
@@ -388,7 +486,11 @@ Hello_beacon_App::get_ett(uint32_t neighbor_id, uint32_t ifIndex)
         return std::numeric_limits<double>::infinity();
     }
     double packet_size_bits = static_cast<double>(m_packetSize) * 8.0;
-    double bandwidth_bps = static_cast<double>(m_data_rate.GetBitRate());
+	double bandwidth_bps = static_cast<double>(m_data_rate.GetBitRate());
+	if (ifIndex < m_last_phy_rate_bps_by_if.size() && m_last_phy_rate_bps_by_if[ifIndex] > 0.0)
+	{
+		bandwidth_bps = m_last_phy_rate_bps_by_if[ifIndex];
+	}
     return etx * packet_size_bits / bandwidth_bps * 1000.0; // Convert to milliseconds
 }
 
@@ -463,7 +565,15 @@ Hello_beacon_App::handle_recv_packet(Ptr<Socket> socket)
 	        if (m_neighbor_set.count(sender_node_id) == 0)
 	        {
 	            m_neighbor_set.insert(sender_node_id);
-            m_distance_vec.emplace_back(CalculateDistance(m_node_position, Vector2D(x_pos, y_pos)),
+	            Vector2D local_pos = m_node_position;
+	            Ptr<Node> local_node = GetNode();
+	            if (local_node && local_node->GetObject<MobilityModel>())
+	            {
+	                const Vector pos = local_node->GetObject<MobilityModel>()->GetPosition();
+	                local_pos = Vector2D(pos.x, pos.y);
+	                m_node_position = local_pos;
+	            }
+            m_distance_vec.emplace_back(CalculateDistance(local_pos, Vector2D(x_pos, y_pos)),
                                         sender_node_id);
 	        }
 	        m_neighbor_set_by_if[linkIfIndex].insert(sender_node_id);

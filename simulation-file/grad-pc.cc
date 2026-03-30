@@ -161,7 +161,15 @@ GradPC_App::gradPC_proportional_power(const unsigned int neighbor_size, const fl
         }
     }
     m_neighbor_list.emplace_back(neighbor_set);
-    return calculate_tx_power(tx_distance);
+    const float tx_power = calculate_tx_power(tx_distance);
+    NS_LOG_UNCOND("[GradPCII] node=" << GetNode()->GetId()
+                                      << " targetSetIdx=" << (m_neighbor_list.size() - 1)
+                                      << " inputNeighbors=" << neighbor_size
+                                      << " upperbound=" << neighbor_upperbound
+                                      << " txDistance=" << tx_distance
+                                      << " resultNeighbors=" << neighbor_set.size()
+                                      << " txPower(dBm)=" << tx_power);
+    return tx_power;
 }
 
 // GradPCIII
@@ -313,6 +321,13 @@ GradPC_App::adjust_tx_power(const short gradPC_func_type, const unsigned int dev
     // set tx_power
     //NS_LOG_UNCOND("node: " << GetNode()->GetId() << " device_idx: " << device_idx << " Tx power" << tx_power);
     set_tx_power(tx_power, device_idx);
+    if (func_type == GradPC_type::proportional)
+    {
+        NS_LOG_UNCOND("[GradPCII] node=" << GetNode()->GetId()
+                                          << " deviceIdx=" << device_idx
+                                          << " sourceNeighbors=" << neighbor_size
+                                          << " appliedPower(dBm)=" << get_device_power_dBm(device_idx));
+    }
     // if (!set_tx_power(tx_power, device_idx)) {
     // NS_ABORT_MSG("tx_power: " << tx_power << " dBm is lower than lowerbound.");
     //}

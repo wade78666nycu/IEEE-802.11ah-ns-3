@@ -27,6 +27,8 @@ TraceWifiTxRate(std::string context,
                 bool isShortPreamble,
                 WifiTxVector txvector)
 {
+	(void)channelFreqMhz;
+	(void)rate;
 	// Filter small control frames; focus on data transmissions.
 	if (packet->GetSize() < 200)
 	{
@@ -34,12 +36,13 @@ TraceWifiTxRate(std::string context,
 	}
 
 	const double mbps = static_cast<double>(txvector.GetMode().GetDataRate()) / 1e6;
-	std::cout << "[tx-rate] " << context << " ch=" << channelNumber
-			  << " mode=" << txvector.GetMode().GetUniqueName()
-			  << " rate=" << std::fixed << std::setprecision(3) << mbps << "Mbps"
-			  << " size=" << packet->GetSize() << "B"
-			  << " preamble=" << (isShortPreamble ? "short" : "long")
-			  << std::endl;
+	static std::ofstream tx_rate_file("tx_rate.txt", std::ios::app);
+	tx_rate_file << "[tx-rate] " << context << " ch=" << channelNumber
+				 << " mode=" << txvector.GetMode().GetUniqueName()
+				 << " rate=" << std::fixed << std::setprecision(3) << mbps << "Mbps"
+				 << " size=" << packet->GetSize() << "B"
+				 << " preamble=" << (isShortPreamble ? "short" : "long")
+				 << '\n';
 }
 
 void
@@ -170,7 +173,7 @@ export_ett_matrix(const NodeContainer& node_container)
 
 	for (uint32_t ifIndex = 1; ifIndex <= channel_count; ++ifIndex)
 	{
-		write_matrix("grid_etx_ch" + std::to_string(ifIndex) + ".csv", ifIndex);
+		write_matrix("grid_ett_ch" + std::to_string(ifIndex) + ".csv", ifIndex);
 	}
 	return;
 }
@@ -259,8 +262,6 @@ main(int argc, char* argv[])
 	SeedManager::SetSeed(2);
 
 	LogComponentEnable("Lab", LOG_LEVEL_INFO);
-	LogComponentEnable("SendPacketApp", LOG_LEVEL_INFO);
-	LogComponentEnable("RecvPacketApp", LOG_LEVEL_INFO);
 	NS_LOG_INFO("Lab Start");
 
 	unsigned int num_nodes{25};
@@ -270,7 +271,8 @@ main(int argc, char* argv[])
 	unsigned int rx_noise_figure{7};
 	double cca_threshold{-92.};
 	double default_tx_power{15};
-	bool export_node_info{false};
+	double hello_warmup_seconds{11.0};
+	bool export_node_info{true};
     bool enable_hello {true};
     bool enable_power_control {false};
     bool reduce_default_power {false};
@@ -286,6 +288,7 @@ main(int argc, char* argv[])
 	cmd.AddValue("tx_power", "tx power", default_tx_power);
 	cmd.AddValue("rx_noise_figure", "background Noise Figure", rx_noise_figure);
     cmd.AddValue("routing_method", "routing method used", routing_method);
+	cmd.AddValue("hello_warmup", "warmup time (seconds) used for hello/ETT before data phase", hello_warmup_seconds);
 	cmd.AddValue("enable_hello", "set true to enable hello beacon (ETX measurement)", enable_hello);
 	cmd.AddValue("enable_power_control", "set false to disable tx power control (keep same power across channels)", enable_power_control);
     cmd.AddValue("show_log", "show log", show_log);
@@ -304,7 +307,7 @@ main(int argc, char* argv[])
 	wifi.SetStandard(WIFI_PHY_STANDARD_80211ah);
 	// MinstrelWifiManager: adapts MCS based on per-station packet success/retry
 	// statistics — no CalculateSnr() needed, compatible with 802.11ah S1G PHY.
-	wifi.SetRemoteStationManager("ns3::ArfWifiManager");
+	wifi.SetRemoteStationManager("ns3::MinstrelWifiManager");
 
 	// device_vec stores devices that uses different radios(channels)
 	std::vector<NetDeviceContainer> device_vec(device_num);
@@ -334,9 +337,11 @@ main(int argc, char* argv[])
 		//if (i == 0)
 		//wifiPhy.EnablePcap("lab", device_vec.at(i));
 	}
-	if(show_log){
-		//Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/MonitorSnifferTx",
-					//MakeCallback(&TraceWifiTxRate));
+	if (show_log)
+	{
+		std::ofstream("tx_rate.txt", std::ios::trunc).close();
+		Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/MonitorSnifferTx",
+						MakeCallback(&TraceWifiTxRate));
 	}
 	// need to install the InternetStackHelper before installing dsr
 	InternetStackHelper internet;
@@ -359,6 +364,8 @@ main(int argc, char* argv[])
 		aodv_helper.Set("RreqRateLimit", UintegerValue(12)); // default is 10
 		aodv_helper.Set("ActiveRouteTimeout", TimeValue(Seconds(10.0)));
 		if (enable_hello && enable_power_control) aodv_helper.Set("GradPCAppIdx", IntegerValue(1));
+		if (enable_hello) aodv_helper.Set("ProactiveRediscoveryInterval",
+			TimeValue(Seconds(0.0))); // disable periodic re-discovery
 		// install the InternetStackHelper and aodv routing
 		InternetStackHelper internet;
 		internet.SetRoutingHelper(aodv_helper); // has effect on the next Install ()
@@ -393,10 +400,13 @@ main(int argc, char* argv[])
         src_node_vec.emplace_back(node_per_row + i);
         dst_node_vec.emplace_back(num_nodes - (2 * node_per_row) + i);
     }*/
-   src_node_vec.emplace_back(1);
+   //src_node_vec.emplace_back(1);
    src_node_vec.emplace_back(0);
-   dst_node_vec.emplace_back(23); 
+   //src_node_vec.emplace_back(23);
+   //dst_node_vec.emplace_back(4); 
    dst_node_vec.emplace_back(24); 
+   //dst_node_vec.emplace_back(20); 
+
 
 	const unsigned int src_port_num = 9;
 	const unsigned int dst_port_num = 80;
@@ -412,23 +422,31 @@ main(int argc, char* argv[])
 	Time total_simulation_time = Seconds(60); // [second]
 	const DataRate data_rate("300Kbps");		 // bps: bits per second
 	Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
+	const Time hello_run_interval = Seconds(2.0);
+	const Time hello_wait_interval = Seconds(5.0);
 
 	Time hello_beacon_start_time = Seconds(0);
 	Time hello_beacon_stop_time = Seconds(0);
 	Time grad_pc_start_time = Seconds(0);
 	Time grad_pc_stop_time = Seconds(0);
+	Time data_phase_start_time = Seconds(0.01);
 	if (enable_hello) {
 		std::cout << "[grid-exp] "<< routing_method << " hello=on power_control=" << (enable_power_control ? "on" : "off") << "\n";
 		hello_beacon_start_time = Seconds(1.0); // [second]
-		hello_beacon_stop_time = Seconds(10.0); // [second]
+		hello_beacon_stop_time = total_simulation_time - Seconds(1.0); // keep hello on during data phase
 		if (enable_power_control) {
-			grad_pc_start_time = Seconds(11.0);	 // [second]g
-		grad_pc_stop_time = Seconds(11.5);		 // [second]
+			grad_pc_start_time = hello_beacon_start_time + Seconds(hello_warmup_seconds);
+			grad_pc_stop_time = grad_pc_start_time + Seconds(0.5);
+			data_phase_start_time = grad_pc_stop_time + Seconds(0.5); 
+		}
+		else
+		{
+			data_phase_start_time = hello_beacon_start_time + Seconds(hello_warmup_seconds)+ Seconds(1.0);
 	}
 	Time control_stop_time = enable_power_control ? grad_pc_stop_time : hello_beacon_stop_time;
-	total_simulation_time += control_stop_time + Seconds(1);
+	total_simulation_time = std::max(total_simulation_time, control_stop_time + Seconds(1));
 
-	Time hello_interval = MilliSeconds(180.0); // milliseconds
+	Time hello_interval = MilliSeconds(100.0); // milliseconds
 	const float extra_tx_distance{80.0};
 
 	std::vector<short> gradPC_func_vec;
@@ -465,6 +483,8 @@ main(int argc, char* argv[])
 		hello_beacon_app->set_backoff_limit(max_backoff_slot, min_backoff_slot);
 		hello_beacon_app->set_backoff_slot_time(Time("4ms"));
 		hello_beacon_app->set_max_packet_count(30);
+		hello_beacon_app->run_interval = hello_run_interval;
+		hello_beacon_app->wait_interval = hello_wait_interval;
 		// hello_beacon_app->enable_print_neighbor = true;
 
 		hello_beacon_app->SetStartTime(hello_beacon_start_time);
@@ -488,9 +508,11 @@ main(int argc, char* argv[])
 		std::cout << "[grid-exp] hello=off (default), devices=" << device_num << "\n";
 	}
 	
-	Time recv_pkt_start_time =
-		(enable_hello) ? ((enable_power_control ? grad_pc_stop_time : hello_beacon_stop_time) + Seconds(1))
-						: Seconds(0.01);
+	Time recv_pkt_start_time = Seconds(0.01);
+	if (enable_hello)
+	{
+		recv_pkt_start_time = data_phase_start_time;
+	}
 	Time recv_pkt_end_time = total_simulation_time - Seconds(1);
 	Time send_pkt_end_time = total_simulation_time - Seconds(2);
 	double min_send_pkt_start_time = (recv_pkt_start_time).GetSeconds();
@@ -534,6 +556,10 @@ main(int argc, char* argv[])
 	
 
 
+	// Redirect NS_LOG (AodvRoutingProtocol) to file during simulation
+	std::ofstream aodv_log_file("aodv_grid_path.log");
+	std::streambuf* const orig_clog_buf = std::clog.rdbuf(aodv_log_file.rdbuf());
+
 	// Start simulation
 	Simulator::Stop(total_simulation_time);
 	Simulator::Run();
@@ -561,6 +587,9 @@ main(int argc, char* argv[])
 	}
 
 	Simulator::Destroy();
+
+	// Restore clog so the following NS_LOG prints to terminal
+	std::clog.rdbuf(orig_clog_buf);
 
 	NS_LOG_INFO("Total received packets: " << total_recv_packets);
     //NS_LOG_INFO("Lab End");

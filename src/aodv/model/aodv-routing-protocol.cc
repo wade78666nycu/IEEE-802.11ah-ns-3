@@ -173,7 +173,9 @@ RoutingProtocol::RoutingProtocol()
 	  m_rreqRateLimitTimer(Timer::CANCEL_ON_DESTROY),
 	  m_rerrRateLimitTimer(Timer::CANCEL_ON_DESTROY),
 	  m_lastBcastTime(Seconds(0)),
-      gradpc_app_idx(-1)
+      gradpc_app_idx(-1),
+	  m_proactiveRediscoveryInterval(Seconds(0)),
+	  m_proactiveRediscoveryTimer(Timer::CANCEL_ON_DESTROY)
 {
 	m_nb.SetCallback(MakeCallback(&RoutingProtocol::SendRerrWhenBreaksLinkToNextHop, this));
 }
@@ -313,7 +315,13 @@ RoutingProtocol::GetTypeId(void)
 						  "Enable intermediate node RREP replies (disabled for ETT-based route selection)",
 						  BooleanValue(false),
 						  MakeBooleanAccessor(&RoutingProtocol::m_enableIntermediateRrep),
-						  MakeBooleanChecker());
+						  MakeBooleanChecker())
+			.AddAttribute("ProactiveRediscoveryInterval",
+						  "Interval at which source nodes proactively re-issue RREQ to refresh routes with updated "
+						  "ETT. Set to 0 (default) to disable.",
+						  TimeValue(Seconds(0)),
+						  MakeTimeAccessor(&RoutingProtocol::m_proactiveRediscoveryInterval),
+						  MakeTimeChecker());
 	return tid;
 }
 
@@ -353,6 +361,7 @@ RoutingProtocol::DoDispose()
 		iter->first->Close();
 	}
 	m_socketSubnetBroadcastAddresses.clear();
+	m_activeDestinations.clear();
 	Ipv4RoutingProtocol::DoDispose();
 }
 
@@ -590,6 +599,15 @@ RoutingProtocol::RouteOutput(Ptr<Packet> p, const Ipv4Header& header, Ptr<NetDev
 		}
 		UpdateRouteLifeTime(dst, ActiveRouteTimeout);
 		UpdateRouteLifeTime(route->GetGateway(), ActiveRouteTimeout);
+		// Track this destination for proactive re-discovery and arm the timer on first use
+		if (m_proactiveRediscoveryInterval.IsStrictlyPositive())
+		{
+			if (m_activeDestinations.insert(dst).second && !m_proactiveRediscoveryTimer.IsRunning())
+			{
+				m_proactiveRediscoveryTimer.SetFunction(&RoutingProtocol::ProactiveRediscoveryTimerExpire, this);
+				m_proactiveRediscoveryTimer.Schedule(m_proactiveRediscoveryInterval);
+			}
+		}
 		return route;
 	}
 
@@ -2375,6 +2393,28 @@ RoutingProtocol::FindSubnetBroadcastSocketWithInterfaceAddress(Ipv4InterfaceAddr
 	}
 	Ptr<Socket> socket;
 	return socket;
+}
+
+void
+RoutingProtocol::ProactiveRediscoveryTimerExpire()
+{
+	NS_LOG_FUNCTION(this);
+	const double perDstJitterMaxSec = 0.2;
+	const double intervalJitterMaxSec = 0.5;
+	for (const Ipv4Address& dst : m_activeDestinations)
+	{
+		const Time sendJitter = Seconds(m_uniformRandomVariable->GetValue(0.0, perDstJitterMaxSec));
+		NS_LOG_UNCOND("[ProactiveRediscovery] node=" << m_node->GetId()
+				<< " t=" << Simulator::Now().GetSeconds()
+				<< " re-issuing RREQ for dst=" << dst
+				<< " jitterMs=" << sendJitter.GetMilliSeconds());
+		Simulator::Schedule(sendJitter, &RoutingProtocol::SendRequest, this, dst);
+	}
+	if (!m_activeDestinations.empty())
+	{
+		const Time intervalJitter = Seconds(m_uniformRandomVariable->GetValue(0.0, intervalJitterMaxSec));
+		m_proactiveRediscoveryTimer.Schedule(m_proactiveRediscoveryInterval + intervalJitter);
+	}
 }
 
 void

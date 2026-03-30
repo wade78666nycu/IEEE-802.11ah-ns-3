@@ -44,6 +44,7 @@
 #include "ns3/grad-pc.h"
 #include "ns3/event-id.h"
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
 
@@ -369,6 +370,13 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	Ptr<UniformRandomVariable> m_uniformRandomVariable;
 	/// Keep track of the last bcast time
 	Time m_lastBcastTime;
+
+	/// Proactive route re-discovery
+	Time m_proactiveRediscoveryInterval; ///< 0 means disabled
+	Timer m_proactiveRediscoveryTimer;   ///< Fires every m_proactiveRediscoveryInterval
+	std::set<Ipv4Address> m_activeDestinations; ///< Destinations this node is actively sending to
+	/// Periodically re-issue RREQ for all active destinations to update routes with fresh ETT
+	void ProactiveRediscoveryTimerExpire();
 };
 
 } // namespace aodv

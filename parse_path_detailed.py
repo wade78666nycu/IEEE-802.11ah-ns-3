@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Parse AODV logs and reconstruct the selected ETT-based path."""
+"""Parse AODV logs and reconstruct selected ETT-based paths.
 
+By default, the report is filtered to the main application flows declared in
+scratch/grid-exp/grid-exp.cc. Use --all to include every AODV route discovery.
+"""
+
+import argparse
 import re
 import sys
 from collections import defaultdict
+from pathlib import Path
 
 
 NODE_RE = re.compile(r"\[node (\d+)\]")
@@ -16,6 +22,63 @@ SELECTED_RE = re.compile(
     r"Destination delayed-reply timer fired: key=([0-9.]+)\|(\d+) "
     r"selected cumulative ETT=([\d.]+) nextHop=([0-9.]+)(?: nextHopChannel=(\d+))?"
 )
+PUSH_RE = re.compile(r"\b(src_node_vec|dst_node_vec)\.emplace_back\((\d+)\)")
+
+
+def strip_cpp_comments(text):
+    result = []
+    index = 0
+    in_block_comment = False
+
+    while index < len(text):
+        if in_block_comment:
+            end = text.find("*/", index)
+            if end == -1:
+                break
+            index = end + 2
+            in_block_comment = False
+            continue
+
+        if text.startswith("/*", index):
+            in_block_comment = True
+            index += 2
+            continue
+
+        if text.startswith("//", index):
+            newline = text.find("\n", index)
+            if newline == -1:
+                break
+            result.append("\n")
+            index = newline + 1
+            continue
+
+        result.append(text[index])
+        index += 1
+
+    return "".join(result)
+
+
+def load_main_flows(config_file):
+    path = Path(config_file)
+    if not path.exists():
+        return None
+
+    src_nodes = []
+    dst_nodes = []
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        content = strip_cpp_comments(handle.read())
+
+    for match in PUSH_RE.finditer(content):
+        vector_name, node_id = match.groups()
+        if vector_name == "src_node_vec":
+            src_nodes.append(int(node_id))
+        else:
+            dst_nodes.append(int(node_id))
+
+    if not src_nodes or len(src_nodes) != len(dst_nodes):
+        return None
+
+    return set(zip(src_nodes, dst_nodes))
 
 
 def ip_to_node_id(ip_str):
@@ -168,14 +231,20 @@ def build_analyses(rreq_graph, selected_path):
     return analyses
 
 
-def build_report(rreq_graph, selected_path):
+def build_report(rreq_graph, selected_path, allowed_pairs=None):
     if not selected_path:
         return "找不到目的地延迟选路日志。请确认日志仍包含 'Destination delayed-reply timer fired'。\n"
 
     analyses = build_analyses(rreq_graph, selected_path)
     grouped_analyses = defaultdict(list)
     for analysis in analyses:
+        pair = (analysis["src_node"], analysis["dst_node"])
+        if allowed_pairs is not None and pair not in allowed_pairs:
+            continue
         grouped_analyses[(analysis["src_node"], analysis["dst_node"])].append(analysis)
+
+    if not grouped_analyses:
+        return "找不到符合主 flow 的选路日志。\n"
 
     lines = []
     lines.append("=" * 100)
@@ -233,11 +302,30 @@ def build_report(rreq_graph, selected_path):
     return "\n".join(lines)
 
 
-def main():
-    log_file = sys.argv[1] if len(sys.argv) > 1 else "/home/wade/ah-lab/aodv_grid_path.log"
-    report_file = sys.argv[2] if len(sys.argv) > 2 else "/home/wade/ah-lab/aodv_path_report.txt"
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("log_file", nargs="?", default="/home/wade/ah-lab/aodv_grid_path.log")
+    parser.add_argument("report_file", nargs="?", default="/home/wade/ah-lab/aodv_path_report.txt")
+    parser.add_argument(
+        "--config",
+        default="/home/wade/ah-lab/scratch/grid-exp/grid-exp.cc",
+        help="Path to grid-exp.cc used to discover main src/dst flow pairs.",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Include every discovered AODV route instead of only configured main flows.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv or sys.argv[1:])
+    log_file = args.log_file
+    report_file = args.report_file
     rreq_graph, selected_path = parse_log(log_file)
-    report = build_report(rreq_graph, selected_path)
+    allowed_pairs = None if args.all else load_main_flows(args.config)
+    report = build_report(rreq_graph, selected_path, allowed_pairs=allowed_pairs)
     with open(report_file, "w", encoding="utf-8") as handle:
         handle.write(report)
     print(f"Report written to {report_file}")

@@ -507,12 +507,7 @@ main(int argc, char* argv[])
 
 	WifiHelper wifi;
 	wifi.SetStandard(WIFI_PHY_STANDARD_80211ah);
-	wifi.SetRemoteStationManager("ns3::GradPCWifiManager",
-								 // wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
-								 "DataMode",
-								 StringValue(phy_mode),
-								 "ControlMode",
-								 StringValue(phy_mode));
+	wifi.SetRemoteStationManager("ns3::MinstrelWifiManager");
 	// device_vec stores devices that uses different radios(channels)
 	std::vector<NetDeviceContainer> device_vec(device_num);
 
@@ -631,14 +626,14 @@ main(int argc, char* argv[])
 					std::cout << "[rand-exp] "<< routing_method << " hello=on power_control=" << (enable_power_control ? "on" : "off") << "\n";
 				}
 				hello_beacon_start_time = Seconds(1.0);						// [second]
-				hello_beacon_stop_time = Seconds(20.0);						// [second]
+				hello_beacon_stop_time = enable_power_control ? Seconds(20.0) : (total_simulation_time - Seconds(2.0));						// [second]
 				if (enable_power_control)
 				{
 					grad_pc_start_time = hello_beacon_stop_time + Seconds(1.0); // [second]
 					grad_pc_stop_time = grad_pc_start_time + Seconds(1.0);		// [second]
 				}
 				Time control_stop_time = enable_power_control ? grad_pc_stop_time : hello_beacon_stop_time;
-				total_simulation_time += control_stop_time + Seconds(1);
+				total_simulation_time = std::max(total_simulation_time, control_stop_time + Seconds(1));
 
 			Time hello_interval = MilliSeconds(180.0); // milliseconds
 			float extra_tx_distance{80.0};
@@ -686,6 +681,8 @@ main(int argc, char* argv[])
 			hello_beacon_app->set_backoff_limit(max_backoff_slot, min_backoff_slot);
 			hello_beacon_app->set_backoff_slot_time(Time("4ms"));
 			hello_beacon_app->set_max_packet_count(30);
+			hello_beacon_app->run_interval = Seconds(2.0);
+			hello_beacon_app->wait_interval = Seconds(5.0);
 			// hello_beacon_app->enable_print_neighbor = true;
 
 			hello_beacon_app->SetStartTime(hello_beacon_start_time);
@@ -729,9 +726,12 @@ main(int argc, char* argv[])
 			}
 		}
 
-		Time recv_pkt_start_time =
-			(enable_hello) ? ((enable_power_control ? grad_pc_stop_time : hello_beacon_stop_time) + Seconds(1))
-						 : Seconds(0.01);
+		Time recv_pkt_start_time = Seconds(0.01);
+		if (enable_hello)
+		{
+			recv_pkt_start_time = enable_power_control ? (grad_pc_stop_time + Seconds(1))
+													  : (hello_beacon_start_time + Seconds(3));
+		}
 	Time recv_pkt_end_time = total_simulation_time - Seconds(1);
 	Time send_pkt_end_time = total_simulation_time - Seconds(2);
 	double min_send_pkt_start_time = (recv_pkt_start_time).GetSeconds();
