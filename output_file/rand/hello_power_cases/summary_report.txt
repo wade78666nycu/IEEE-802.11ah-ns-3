@@ -2,11 +2,11 @@ Rand Hello/Power Comparison
 ===========================
 
 1. hello=on, power_control=on
-  PDR=61.76%  throughput=63768.80 bps  energy=6509.1846 J  energy/delivered=5.0186
-  delay(avg/max)=221.662/4714.800 ms  recv=1297/2100
-  aodv tx: RREQ=35 RREP=47 RERR=278 ACK=0 | rx: RREQ=38806 RREP=157 RERR=2650 ACK=0
-  mac retry: short=0 long=2192 final_rts=0 final_data=114
-  path: discoveries=35 avg_hops=3.43 avg_path_ett=73.752 next-hop-channels=ch1=15 ch2=11 ch3=9 hop-channels=ch1=59 ch2=33 ch3=28
+  PDR=66.29%  throughput=68372.46 bps  energy=6006.8820 J  energy/delivered=4.3153
+  delay(avg/max)=87.485/3425.561 ms  recv=1392/2100
+  aodv tx: RREQ=18 RREP=19 RERR=356 ACK=0 | rx: RREQ=19456 RREP=64 RERR=4403 ACK=0
+  mac retry: short=0 long=1920 final_rts=0 final_data=69
+  path: discoveries=17 avg_hops=3.29 avg_path_ett=111.116 next-hop-channels=ch1=10 ch2=4 ch3=3 hop-channels=ch1=28 ch2=15 ch3=13
 
 2. hello=on, power_control=off
   PDR=64.62%  throughput=66777.38 bps  energy=6656.8198 J  energy/delivered=4.9055
@@ -23,9 +23,9 @@ Rand Hello/Power Comparison
   path: discoveries=1650 avg_hops=2.67 avg_path_ett=inf next-hop-channels=ch1=1650 ch2=0 ch3=0 hop-channels=ch1=0 ch2=0 ch3=0
 
 4. hello=on, power_control=on, prefer_low_power=on
-  PDR=59.52%  throughput=61458.68 bps  energy=5886.9369 J  energy/delivered=4.7095
-  delay(avg/max)=170.442/4171.109 ms  recv=1250/2100
-  aodv tx: RREQ=26 RREP=29 RERR=476 ACK=0 | rx: RREQ=27200 RREP=90 RERR=5616 ACK=0
-  mac retry: short=0 long=1659 final_rts=0 final_data=108
-  path: discoveries=24 avg_hops=3.04 avg_path_ett=73.735 next-hop-channels=ch1=8 ch2=4 ch3=12 hop-channels=ch1=35 ch2=17 ch3=21
+  PDR=57.81%  throughput=59591.93 bps  energy=5645.6272 J  energy/delivered=4.6504
+  delay(avg/max)=88.333/3770.153 ms  recv=1214/2100
+  aodv tx: RREQ=14 RREP=15 RERR=481 ACK=0 | rx: RREQ=14395 RREP=41 RERR=9261 ACK=0
+  mac retry: short=0 long=1742 final_rts=0 final_data=155
+  path: discoveries=13 avg_hops=2.85 avg_path_ett=74.880 next-hop-channels=ch1=5 ch2=2 ch3=6 hop-channels=ch1=19 ch2=7 ch3=11
 

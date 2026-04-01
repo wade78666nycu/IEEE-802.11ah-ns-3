@@ -396,9 +396,10 @@ GradPC_App::adjust_tx_power(const short gradPC_func_type, const unsigned int dev
 
     GradPC_type func_type = static_cast<GradPC_type>(gradPC_func_type);
     float tx_power {};
-    // All channels compute power from the same original full-power neighbor set
-    // to avoid cascading reduction that makes higher-index channels too weak.
-    const unsigned int neighbor_size = m_neighbor_list[0].size();
+    // Cascaded power control: each channel derives from previous channel's neighbor set
+    // so ch1 > ch2 > ch3 in power, but use gentler delta to avoid over-reduction.
+    const unsigned int prev_idx = (device_idx == 0) ? 0 : (device_idx - 1);
+    const unsigned int neighbor_size = m_neighbor_list[prev_idx].size();
     if (func_type == GradPC_type::logarithmic)
     {
         tx_power = gradPC_log_power(device_idx, neighbor_size);

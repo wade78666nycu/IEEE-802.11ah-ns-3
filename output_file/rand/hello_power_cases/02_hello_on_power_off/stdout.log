@@ -1,7 +1,7 @@
 Waf: Entering directory `/home/wade/ah-lab/build'
 Waf: Leaving directory `/home/wade/ah-lab/build'
 Build commands will be stored in build/compile_commands.json
-'build' finished successfully (0.355s)
+'build' finished successfully (0.354s)
 Lab Start
 source node:  18 ---> destination node:  10
 source node:  26 ---> destination node:  30
