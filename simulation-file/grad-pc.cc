@@ -288,7 +288,8 @@ GradPC_App::set_tx_power(float tx_power_dBm, const unsigned int device_idx)
     Ptr<WifiNetDevice> wifi_device = DynamicCast<WifiNetDevice>(m_node->GetDevice(device_idx));
     Ptr<YansWifiPhy> wifi_phy = DynamicCast<YansWifiPhy>(wifi_device->GetPhy());
     wifi_phy->SetTxPowerStart(tx_power_dBm);
-    wifi_phy->SetTxPowerEnd(tx_power_dBm);
+    // Keep TxPowerEnd at original max power so that ACK/CTS can use full power,
+    // avoiding asymmetric link issues where the receiver cannot reach back.
     return tx_power_valid;
 }
 

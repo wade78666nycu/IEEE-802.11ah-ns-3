@@ -206,11 +206,35 @@ Hello_beacon_App::set_socket()
 
 	    const uint32_t maxIfIndex = nIf > 0 ? (nIf - 1) : 0;
 	    m_sequence_number_by_if.assign(maxIfIndex + 1, 0);
-	    m_neighbor_set_by_if.assign(maxIfIndex + 1, {});
-	    m_neighbor_info_by_if.assign(maxIfIndex + 1, {});
-	    m_neighbor_df_by_if.assign(maxIfIndex + 1, {});
-	    m_last_phy_rate_bps_by_if.assign(maxIfIndex + 1,
-	                                    static_cast<double>(m_data_rate.GetBitRate()));
+	    if (!m_hasRunOnce)
+	    {
+	        // First cycle: clear all neighbour data.
+	        m_neighbor_set_by_if.assign(maxIfIndex + 1, {});
+	        m_neighbor_info_by_if.assign(maxIfIndex + 1, {});
+	        m_neighbor_df_by_if.assign(maxIfIndex + 1, {});
+	        m_last_phy_rate_bps_by_if.assign(maxIfIndex + 1,
+	                                        static_cast<double>(m_data_rate.GetBitRate()));
+	    }
+	    else
+	    {
+	        // Subsequent cycles: keep existing neighbour data, only clear
+	        // per-sequence tracking so delivery ratio is computed from new
+	        // packets only (avoids mixing stale pre-GradPC measurements).
+	        for (auto& info : m_neighbor_info_by_if)
+	        {
+	            info.clear();
+	        }
+	        // Resize vectors if needed (should already be correct).
+	        if (m_neighbor_set_by_if.size() < maxIfIndex + 1)
+	            m_neighbor_set_by_if.resize(maxIfIndex + 1);
+	        if (m_neighbor_info_by_if.size() < maxIfIndex + 1)
+	            m_neighbor_info_by_if.resize(maxIfIndex + 1);
+	        if (m_neighbor_df_by_if.size() < maxIfIndex + 1)
+	            m_neighbor_df_by_if.resize(maxIfIndex + 1);
+	        if (m_last_phy_rate_bps_by_if.size() < maxIfIndex + 1)
+	            m_last_phy_rate_bps_by_if.resize(maxIfIndex + 1,
+	                                             static_cast<double>(m_data_rate.GetBitRate()));
+	    }
 	    if (m_phy_trace_connected_by_if.size() < maxIfIndex + 1)
 	    {
 	        m_phy_trace_connected_by_if.resize(maxIfIndex + 1, false);
@@ -301,6 +325,7 @@ Hello_beacon_App::StopApplication()
         return; // already stopped; prevent double-scheduling a restart
     //NS_LOG_DEBUG("Hello beacon app stop");
     m_running = false;
+    m_hasRunOnce = true;
     if (m_send_event.IsRunning())
     {
         Simulator::Cancel(m_send_event);

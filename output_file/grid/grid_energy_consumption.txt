@@ -1,0 +1,35 @@
+Node Energy Consumption Report
+==============================
+total nodes: 25
+Calculation: Energy = sum(TX Power * TX Duration) for all packets
+==============================
+
+node  0: 0.451875000 J
+node  1: 0.470500000 J
+node  2: 0.493312500 J
+node  3: 0.477750000 J
+node  4: 0.473000000 J
+node  5: 1.823320592 J
+node  6: 2.913937570 J
+node  7: 2.436907300 J
+node  8: 3.639103684 J
+node  9: 1.924787240 J
+node 10: 0.513812500 J
+node 11: 2.449429710 J
+node 12: 0.588937500 J
+node 13: 2.871078455 J
+node 14: 0.537250000 J
+node 15: 0.602039858 J
+node 16: 0.656402256 J
+node 17: 0.669927632 J
+node 18: 0.691835376 J
+node 19: 0.612556419 J
+node 20: 0.481250000 J
+node 21: 0.546187500 J
+node 22: 0.557375000 J
+node 23: 0.563187500 J
+node 24: 0.510437500 J
+
+==============================
+Total Network Energy: 27.9562 Joules
+Average per Node: 1.118248044 Joules

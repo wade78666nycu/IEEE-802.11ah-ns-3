@@ -1,0 +1,708 @@
+====================================================================================================
+AODV path analysis
+====================================================================================================
+
+source=4 destination=44
+discoveries=2
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=50.945, next hop=4, next hop channel=3
+
+  selected path:
+  4 -> 44
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=11.4432s    4       3        50.945    50.945      yes
+  t=11.5391s    7       1        34.133    68.932      
+  t=11.4782s    38      1        42.140    98.744      
+  t=11.5601s    30      3        34.133    103.065     
+  t=11.5765s    3       1        34.133    103.065     
+  t=11.6602s    23      1        42.667    115.390     
+  t=11.4891s    3       1        34.133    132.877     
+  t=11.5495s    18      1        47.407    136.819     
+  t=11.5164s    30      3        34.133    144.071     
+  t=11.8282s    24      3        54.180    157.244     
+  t=11.5566s    34      2        54.180    165.898     
+  t=11.8758s    11      3        37.926    185.788     
+  t=11.8212s    11      3        37.926    333.463     
+  t=11.7138s    24      3        54.180    429.361     
+  t=11.7715s    41      1        310.303   436.360     
+  t=11.6814s    41      1        310.303   453.048     
+  t=11.6636s    21      1        724.040   886.386     
+
+  path breakdown:
+  4 -> 44  link_ett=50.945  cumulative=50.945  channel=3  t=11.4432s
+
+  discovery #2 (rreq_id=2)
+  selected cumulative ETT=43.097, next hop=4, next hop channel=3
+
+  selected path:
+  4 -> 44
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=25.8836s    4       3        43.098    43.097      yes
+  t=25.9001s    11      3        42.667    43.698      
+  t=25.9764s    3       2        37.926    43.899      
+  t=25.9985s    7       2        37.926    45.421      
+  t=25.9523s    38      1        44.100    47.285      
+  t=26.0088s    7       2        37.926    50.482      
+  t=25.9078s    7       2        37.926    61.962      
+  t=26.0212s    34      3        62.061    63.692      
+  t=25.8967s    34      3        62.061    66.860      
+  t=26.0019s    18      2        63.210    68.435      
+  t=26.0053s    30      3        34.133    83.240      
+  t=25.9592s    45      3        51.200    85.333      
+  t=26.0403s    30      3        34.133    91.852      
+  t=25.9455s    18      2        63.210    105.875     
+  t=25.9112s    42      1        79.380    113.512     
+  t=25.9390s    23      1        92.530    131.463     
+  t=25.9557s    25      1        82.249    164.817     
+  t=25.9195s    3       2        37.926    210.315     
+  t=25.9423s    49      1        254.726   322.992     
+  t=25.9161s    2       2        341.333   553.001     
+
+  path breakdown:
+  4 -> 44  link_ett=43.098  cumulative=43.097  channel=3  t=25.8836s
+
+source=7 destination=38
+discoveries=3
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=38.352, next hop=7, next hop channel=3
+
+  selected path:
+  7 -> 38
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=11.3092s    7       3        38.352    38.352      yes
+  t=11.3267s    2       1        39.690    73.822      
+  t=11.3375s    3       1        42.613    76.746      
+  t=11.3712s    44      1        42.613    76.746      
+  t=11.3302s    30      1        54.701    88.833      
+  t=11.3193s    45      1        34.133    91.021      
+  t=11.3644s    42      3        42.613    102.706     
+  t=11.3609s    40      1        34.133    125.154     
+  t=11.3227s    49      1        42.667    133.687     
+  t=11.3410s    24      1        348.299   416.565     
+  t=11.3336s    11      1        406.349   474.615     
+
+  path breakdown:
+  7 -> 38  link_ett=38.352  cumulative=38.352  channel=3  t=11.3092s
+
+  discovery #2 (rreq_id=2)
+  selected cumulative ETT=38.352, next hop=7, next hop channel=3
+
+  selected path:
+  7 -> 38
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=14.1218s    7       3        38.352    38.352      yes
+  t=14.2174s    40      1        34.133    42.623      
+  t=14.1458s    3       1        42.613    46.026      
+  t=14.1616s    4       3        56.606    57.553      
+  t=14.1685s    44      1        42.613    76.746      
+  t=14.2722s    45      1        34.133    76.756      
+  t=14.2553s    45      1        34.133    86.026      
+  t=14.1406s    42      3        42.613    102.706     
+  t=14.1507s    49      1        42.667    145.372     
+  t=14.1298s    49      1        42.667    301.251     
+  t=14.1948s    24      1        348.299   416.565     
+
+  path breakdown:
+  7 -> 38  link_ett=38.352  cumulative=38.352  channel=3  t=14.1218s
+
+  discovery #3 (rreq_id=3)
+  selected cumulative ETT=0.532, next hop=7, next hop channel=1
+
+  selected path:
+  7 -> 38
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=35.5784s    7       1        0.533     0.532       yes
+  t=35.6111s    40      1        0.599     24.492      
+  t=35.6009s    44      1        0.637     34.769      
+  t=35.5857s    25      1        0.868     35.001      
+  t=35.6799s    45      1        0.533     66.564      
+  t=35.6722s    49      1        0.474     68.127      
+  t=35.7009s    42      1        0.685     85.762      
+  t=35.6457s    45      1        0.533     88.844      
+  t=35.6933s    42      1        0.685     130.967     
+  t=35.6525s    49      1        0.474     139.721     
+  t=35.7046s    43      1        10.159    151.486     
+  t=35.6765s    42      1        0.685     159.972     
+
+  path breakdown:
+  7 -> 38  link_ett=0.533  cumulative=0.532  channel=1  t=35.5784s
+
+source=15 destination=34
+discoveries=1
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=0.984, next hop=15, next hop channel=3
+
+  selected path:
+  15 -> 34
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=38.7269s    15      3        0.985     0.984       yes
+  t=38.7404s    18      3        0.427     1.520       
+  t=38.7845s    23      3        0.474     35.701      
+  t=38.7302s    21      3        0.912     38.836      
+  t=38.7607s    11      3        0.533     39.981      
+  t=38.8534s    24      3        0.474     51.674      
+  t=38.7370s    23      3        0.474     76.891      
+  t=38.7539s    3       3        2.397     79.288      
+  t=38.8499s    4       3        5.818     83.846      
+  t=38.8121s    30      3        0.677     124.501     
+  t=38.8018s    44      3        0.871     131.987     
+  t=38.7983s    2       1        85.333    154.693     
+  t=38.7948s    2       1        85.333    237.601     
+  t=38.7336s    44      3        0.871     721.461     
+  t=38.7777s    7       1        202.105   924.829     
+
+  path breakdown:
+  15 -> 34  link_ett=0.985  cumulative=0.984  channel=3  t=38.7269s
+
+source=17 destination=26
+discoveries=1
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=14.933, next hop=17, next hop channel=1
+
+  selected path:
+  17 -> 26
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=51.8341s    17      1        14.933    14.933      yes
+  t=51.8864s    8       2        0.569     34.701      
+  t=51.9045s    37      2        0.474     39.261      
+  t=51.8528s    32      2        0.533     48.511      
+  t=51.9444s    43      2        0.936     79.411      
+  t=51.8762s    43      2        0.936     91.579      
+  t=51.9717s    40      2        0.853     96.914      
+  t=52.0042s    12      2        0.665     129.234     
+  t=52.0002s    12      2        0.665     151.043     
+  t=52.0103s    16      2        0.749     172.661     
+  t=51.9751s    42      2        2.560     174.473     
+  t=51.8633s    43      2        0.936     362.955     
+  t=51.9505s    16      2        0.936     444.224     
+
+  path breakdown:
+  17 -> 26  link_ett=14.933  cumulative=14.933  channel=1  t=51.8341s
+
+source=18 destination=10
+discoveries=2
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=108.033, next hop=41, next hop channel=1
+
+  selected path:
+  18 -> 41 -> 10
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=12.5380s    41      1        54.701    108.033     yes
+  t=12.6028s    21      1        56.606    129.539     
+  t=12.5788s    9       3        34.133    135.950     
+  t=12.5244s    28      3        37.926    141.974     
+  t=12.5651s    46      3        34.133    158.249     
+  t=12.5449s    46      3        34.133    172.315     
+  t=12.5346s    9       3        34.133    180.848     
+  t=12.5615s    5       2        63.920    211.066     
+  t=12.6076s    0       3        47.407    219.722     
+  t=12.5893s    1       3        47.407    223.514     
+  t=12.5754s    31      1        61.935    247.006     
+  t=12.5822s    0       3        47.407    253.856     
+  t=12.5994s    33      2        38.352    294.103     
+  t=12.5858s    6       1        84.909    336.867     
+  t=12.6461s    27      1        256.000   391.281     
+  t=12.6144s    27      1        256.000   406.938     
+  t=12.6317s    20      3        310.303   420.653     
+  t=12.6213s    20      3        310.303   496.307     
+  t=12.6180s    20      3        310.303   570.035     
+
+  path breakdown:
+  18 -> 41  link_ett=53.333  cumulative=53.333  channel=1  t=12.5035s
+  41 -> 10  link_ett=54.701  cumulative=108.033  channel=1  t=12.5380s
+
+  discovery #2 (rreq_id=2)
+  selected cumulative ETT=41.636, next hop=9, next hop channel=3
+
+  selected path:
+  18 -> 15 -> 9 -> 10
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=27.2136s    9       3        34.133    41.636      yes
+  t=27.1826s    9       3        34.133    47.273      
+  t=27.1262s    41      1        54.084    62.836      
+  t=27.1618s    28      3        34.133    72.735      
+  t=27.1329s    15      3        75.852    76.528      
+  t=27.2205s    46      3        34.133    79.561      
+  t=27.1578s    46      3        34.133    81.285      
+  t=27.2526s    0       3        34.133    81.406      
+  t=27.2356s    33      3        37.926    88.990      
+  t=27.1897s    21      1        56.606    99.490      
+  t=27.1682s    5       2        38.400    128.217     
+  t=27.2322s    0       3        34.133    169.462     
+  t=27.2031s    33      3        37.926    171.503     
+  t=27.3240s    27      1        455.111   542.789     
+  t=27.3205s    27      1        455.111   545.595     
+
+  path breakdown:
+  18 -> 15  link_ett=0.677  cumulative=0.677  channel=3  t=27.1188s
+  15 -> 9  link_ett=6.827  cumulative=7.503  channel=1  t=27.1329s
+  9 -> 10  link_ett=34.133  cumulative=41.636  channel=3  t=27.2136s
+
+source=26 destination=17
+discoveries=1
+
+  discovery #1 (rreq_id=2)
+  selected cumulative ETT=50.174, next hop=39, next hop channel=1
+
+  selected path:
+  26 -> 13 -> 39 -> 17
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=52.1800s    39      1        42.667    50.174      yes
+  t=52.0551s    26      3        75.852    75.851      
+  t=52.1833s    8       2        34.133    79.566      
+  t=52.1960s    14      1        42.140    83.780      
+  t=52.0747s    32      2        56.889    94.813      
+  t=52.1161s    39      1        42.667    179.199     
+  t=52.1229s    19      3        42.667    179.578     
+  t=52.1295s    14      1        42.140    212.805     
+  t=52.1926s    43      1        235.402   274.189     
+  t=52.1719s    13      1        304.762   305.443     
+
+  path breakdown:
+  26 -> 13  link_ett=0.683  cumulative=0.682  channel=1  t=52.0551s
+  13 -> 39  link_ett=6.827  cumulative=7.508  channel=1  t=52.1719s
+  39 -> 17  link_ett=42.667  cumulative=50.174  channel=1  t=52.1800s
+
+source=26 destination=30
+discoveries=1
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=148.636, next hop=38, next hop channel=1
+
+  selected path:
+  26 -> 40 -> 38 -> 30
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=11.3784s    38      1        53.333    148.636     yes
+  t=11.4363s    42      1        60.952    160.474     
+  t=11.4466s    4       1        63.682    162.776     
+  t=11.3914s    7       3        34.133    167.361     
+  t=11.5128s    44      3        34.133    171.575     
+  t=11.4157s    3       3        37.926    175.367     
+  t=11.4089s    2       1        43.886    177.113     
+  t=11.7267s    11      2        37.926    185.642     
+  t=11.4052s    25      1        43.886    215.465     
+  t=11.4816s    18      1        42.140    217.506     
+  t=11.4705s    34      3        47.407    218.982     
+  t=11.4016s    18      1        42.140    229.980     
+  t=11.5199s    11      2        37.926    239.419     
+  t=11.7070s    24      1        42.140    243.633     
+  t=11.3748s    7       3        34.133    257.842     
+  t=11.4124s    3       3        37.926    295.767     
+  t=11.3881s    2       1        43.886    301.727     
+  t=11.3819s    25      1        43.886    305.946     
+  t=11.3948s    18      1        42.140    320.461     
+  t=11.4192s    11      2        37.926    329.900     
+  t=11.4398s    44      3        34.133    379.747     
+  t=11.3678s    40      1        853.333   914.503     
+  t=11.5057s    21      1        955.733   1209.030    
+  t=11.5024s    21      1        955.733   1299.510    
+
+  path breakdown:
+  26 -> 40  link_ett=61.171  cumulative=61.170  channel=2  t=11.3504s
+  40 -> 38  link_ett=34.133  cumulative=95.303  channel=1  t=11.3678s
+  38 -> 30  link_ett=53.333  cumulative=148.636  channel=1  t=11.3784s
+
+source=27 destination=12
+discoveries=7
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=118.885, next hop=13, next hop channel=3
+
+  selected path:
+  27 -> 20 -> 13 -> 12
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=11.9278s    13      3        34.133    118.885     yes
+  t=11.7611s    20      1        79.644    121.783     
+  t=11.8651s    13      3        34.133    137.559     
+  t=11.9038s    16      3        47.407    142.220     
+  t=11.8527s    13      3        34.133    326.703     
+  t=11.5749s    8       1        56.889    333.065     
+  t=11.6737s    37      2        47.940    350.846     
+  t=11.9072s    43      3        37.926    368.894     
+  t=11.6050s    26      2        38.788    377.479     
+  t=11.5853s    17      1        170.667   426.165     
+  t=11.5266s    17      1        170.667   440.834     
+  t=11.5948s    26      2        38.788    445.488     
+  t=11.9004s    40      3        170.667   549.422     
+  t=11.6118s    40      3        170.667   570.528     
+  t=11.5819s    8       1        56.889    723.299     
+  t=11.6189s    32      3        56.889    741.449     
+  t=11.9421s    24      1        568.889   802.774     
+  t=11.9387s    24      1        568.889   1053.270    
+
+  path breakdown:
+  27 -> 20  link_ett=42.140  cumulative=42.139  channel=2  t=11.5024s
+  20 -> 13  link_ett=42.613  cumulative=84.752  channel=2  t=11.7611s
+  13 -> 12  link_ett=34.133  cumulative=118.885  channel=3  t=11.9278s
+
+  discovery #2 (rreq_id=2)
+  selected cumulative ETT=35.265, next hop=13, next hop channel=3
+
+  selected path:
+  27 -> 20 -> 13 -> 12
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=19.1233s    13      3        34.133    35.265      yes
+  t=19.1164s    13      3        34.133    37.546      
+  t=19.1575s    26      2        38.788    40.398      
+  t=19.1540s    26      2        38.788    42.680      
+  t=19.0717s    26      2        38.788    69.299      
+  t=19.0436s    20      1        79.644    80.170      
+  t=19.1266s    8       1        56.889    123.982     
+  t=18.9981s    39      1        102.400   125.155     
+  t=19.2177s    16      3        47.407    129.119     
+  t=19.1128s    37      2        47.940    355.139     
+  t=19.1922s    16      3        47.407    396.062     
+  t=19.1676s    4       3        155.152   420.072     
+  t=19.0956s    42      1        227.556   588.400     
+  t=19.1776s    43      3        37.926    712.256     
+  t=19.0281s    8       1        56.889    723.299     
+  t=19.1641s    43      3        37.926    791.022     
+  t=19.0990s    40      3        170.667   798.132     
+  t=19.1711s    24      1        568.889   867.275     
+  t=19.0888s    24      1        568.889   915.647     
+  t=19.1199s    43      3        37.926    1289.480    
+
+  path breakdown:
+  27 -> 20  link_ett=0.527  cumulative=0.526  channel=2  t=18.9876s
+  20 -> 13  link_ett=0.606  cumulative=1.132  channel=1  t=19.0436s
+  13 -> 12  link_ett=34.133  cumulative=35.265  channel=3  t=19.1233s
+
+  discovery #3 (rreq_id=3)
+  selected cumulative ETT=37.546, next hop=13, next hop channel=3
+
+  selected path:
+  27 -> 13 -> 12
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=19.9532s    13      3        34.133    37.546      yes
+  t=19.9739s    26      2        38.788    42.680      
+  t=19.9705s    43      3        37.926    79.737      
+  t=19.9772s    37      2        47.940    130.997     
+  t=20.1659s    37      2        68.267    140.425     
+
+  path breakdown:
+  27 -> 13  link_ett=3.413  cumulative=3.413  channel=1  t=19.9492s
+  13 -> 12  link_ett=34.133  cumulative=37.546  channel=3  t=19.9532s
+
+  discovery #4 (rreq_id=4)
+  selected cumulative ETT=35.258, next hop=13, next hop channel=3
+
+  selected path:
+  27 -> 20 -> 13 -> 12
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=33.6072s    13      3        34.133    35.258      yes
+  t=33.5265s    13      3        34.133    35.413      
+  t=33.6437s    26      3        34.133    73.262      
+  t=33.6261s    43      3        38.400    112.303     
+  t=33.6224s    26      3        34.133    121.894     
+  t=33.5688s    17      1        102.400   137.974     
+  t=33.5507s    37      2        54.701    141.987     
+  t=33.5851s    43      3        38.400    163.612     
+  t=33.5723s    32      1        136.533   253.734     
+  t=33.6003s    40      1        151.704   669.634     
+  t=33.6402s    4       3        975.238   1490.040    
+
+  path breakdown:
+  27 -> 20  link_ett=0.593  cumulative=0.592  channel=2  t=33.4919s
+  20 -> 13  link_ett=0.533  cumulative=1.125  channel=1  t=33.5885s
+  13 -> 12  link_ett=34.133  cumulative=35.258  channel=3  t=33.6072s
+
+  discovery #5 (rreq_id=5)
+  selected cumulative ETT=35.258, next hop=13, next hop channel=3
+
+  selected path:
+  27 -> 20 -> 13 -> 12
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=36.6764s    13      3        34.133    35.258      yes
+  t=36.5230s    13      3        34.133    35.413      
+  t=36.3925s    39      3        113.778   124.787     
+  t=36.4798s    17      1        102.400   138.239     
+  t=36.6055s    20      3        170.667   171.258     
+  t=36.4991s    26      3        34.133    225.618     
+  t=36.6480s    16      2        38.352    261.346     
+  t=36.4928s    26      3        34.133    264.019     
+  t=36.5195s    43      3        38.400    306.090     
+  t=36.4868s    32      1        136.533   361.677     
+  t=36.5801s    4       3        975.238   1142.060    
+
+  path breakdown:
+  27 -> 20  link_ett=0.593  cumulative=0.592  channel=2  t=36.3791s
+  20 -> 13  link_ett=0.533  cumulative=1.125  channel=1  t=36.6055s
+  13 -> 12  link_ett=34.133  cumulative=35.258  channel=3  t=36.6764s
+
+  discovery #6 (rreq_id=6)
+  selected cumulative ETT=35.313, next hop=13, next hop channel=2
+
+  selected path:
+  27 -> 20 -> 13 -> 12
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=43.2377s    13      2        34.133    35.313      yes
+  t=43.1896s    13      2        34.133    42.666      
+  t=43.2668s    16      3        38.352    87.696      
+  t=43.2137s    16      3        38.352    89.551      
+  t=43.2205s    43      3        34.133    93.695      
+  t=43.2069s    26      3        34.133    96.571      
+  t=43.0849s    26      3        34.133    105.727     
+  t=43.0815s    39      3        102.400   119.381     
+  t=43.1689s    8       3        62.061    122.138     
+  t=43.1759s    37      2        42.667    144.399     
+  t=43.2240s    32      1        45.511    146.736     
+  t=43.1725s    37      2        42.667    152.612     
+  t=43.1089s    17      3        128.000   187.594     
+  t=43.1055s    37      2        42.667    245.828     
+  t=43.2343s    40      1        170.667   277.459     
+
+  path breakdown:
+  27 -> 20  link_ett=0.610  cumulative=0.609  channel=2  t=43.0782s
+  20 -> 13  link_ett=0.571  cumulative=1.180  channel=1  t=43.1585s
+  13 -> 12  link_ett=34.133  cumulative=35.313  channel=2  t=43.2377s
+
+  discovery #7 (rreq_id=7)
+  selected cumulative ETT=35.313, next hop=13, next hop channel=2
+
+  selected path:
+  27 -> 20 -> 13 -> 12
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=48.9621s    13      2        34.133    35.313      yes
+  t=48.9693s    26      3        34.133    35.928      
+  t=48.9376s    13      2        34.133    40.811      
+  t=48.9583s    26      3        34.133    41.426      
+  t=48.8156s    13      2        34.133    42.666      
+  t=48.8190s    26      3        34.133    43.281      
+  t=48.9785s    43      3        34.133    75.559      
+  t=48.8396s    43      3        34.133    77.414      
+  t=48.9658s    37      2        42.667    88.311      
+  t=48.8555s    16      3        38.352    89.551      
+  t=48.8867s    37      2        42.667    90.166      
+  t=48.9730s    32      1        45.511    91.591      
+  t=48.8361s    43      3        34.133    93.695      
+  t=49.0066s    4       1        113.778   136.403     
+  t=48.9145s    8       3        62.061    141.376     
+  t=49.0003s    4       1        113.778   168.208     
+  t=48.8430s    37      2        42.667    194.082     
+  t=48.9932s    42      3        853.333   1000.950    
+  t=48.9546s    42      3        853.333   1222.170    
+
+  path breakdown:
+  27 -> 20  link_ett=0.610  cumulative=0.609  channel=2  t=48.8093s
+  20 -> 13  link_ett=0.571  cumulative=1.180  channel=1  t=48.9413s
+  13 -> 12  link_ett=34.133  cumulative=35.313  channel=2  t=48.9621s
+
+source=31 destination=49
+discoveries=5
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=332.543, next hop=4, next hop channel=1
+
+  selected path:
+  31 -> 28 -> 15 -> 18 -> 11 -> 4 -> 49
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=12.2524s    4       1        72.779    332.543     yes
+  t=12.2490s    4       1        72.779    346.069     
+  t=12.2272s    40      1        34.133    382.382     
+  t=12.1169s    43      1        63.210    416.813     
+  t=12.2237s    4       1        72.779    429.394     
+  t=12.2201s    42      2        42.613    447.162     
+  t=12.2131s    45      1        34.133    463.588     
+
+  path breakdown:
+  31 -> 28  link_ett=102.400  cumulative=102.400  channel=1  t=12.0085s
+  28 -> 15  link_ett=42.140  cumulative=144.539  channel=3  t=12.0157s
+  15 -> 18  link_ett=65.016  cumulative=209.554  channel=1  t=12.0290s
+  18 -> 11  link_ett=47.787  cumulative=257.340  channel=2  t=12.0464s
+  11 -> 4  link_ett=2.426  cumulative=259.765  channel=1  t=12.1412s
+  4 -> 49  link_ett=72.779  cumulative=332.543  channel=1  t=12.2524s
+
+  discovery #2 (rreq_id=2)
+  selected cumulative ETT=84.236, next hop=40, next hop channel=1
+
+  selected path:
+  31 -> 46 -> 15 -> 18 -> 7 -> 38 -> 40 -> 49
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=19.5907s    40      1        34.133    84.236      yes
+  t=19.4071s    38      1        43.761    90.450      
+  t=19.4173s    45      1        34.133    114.956     
+  t=19.4036s    38      1        43.761    146.992     
+  t=19.4477s    45      1        34.133    171.498     
+  t=19.4511s    42      2        42.613    187.984     
+  t=19.5115s    40      1        34.133    242.149     
+  t=19.4903s    7       1        258.586   303.917     
+  t=19.5077s    40      1        34.133    390.933     
+  t=19.4138s    45      1        34.133    438.972     
+  t=19.3663s    42      2        42.613    450.301     
+  t=19.4545s    43      1        63.210    598.353     
+  t=19.3496s    43      1        63.210    693.758     
+  t=19.4579s    26      1        310.303   740.962     
+  t=19.3801s    26      1        310.303   896.838     
+
+  path breakdown:
+  31 -> 46  link_ett=38.400  cumulative=38.400  channel=1  t=19.2562s
+  46 -> 15  link_ett=1.778  cumulative=40.177  channel=3  t=19.2772s
+  15 -> 18  link_ett=2.977  cumulative=43.153  channel=2  t=19.3185s
+  18 -> 7  link_ett=3.059  cumulative=46.211  channel=1  t=19.3489s
+  7 -> 38  link_ett=0.479  cumulative=46.690  channel=1  t=19.3735s
+  38 -> 40  link_ett=3.413  cumulative=50.103  channel=1  t=19.4071s
+  40 -> 49  link_ett=34.133  cumulative=84.236  channel=1  t=19.5907s
+
+  discovery #3 (rreq_id=3)
+  selected cumulative ETT=120.378, next hop=38, next hop channel=3
+
+  selected path:
+  31 -> 33 -> 10 -> 15 -> 18 -> 7 -> 38 -> 49
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=21.0752s    38      3        39.690    120.378     yes
+  t=21.2732s    45      2        34.133    148.955     
+  t=20.9926s    38      3        39.690    181.093     
+  t=21.3777s    26      1        56.889    207.893     
+  t=21.1007s    45      2        34.133    209.670     
+  t=20.9753s    7       1        170.667   250.929     
+  t=21.0256s    45      2        34.133    250.929     
+  t=20.9245s    22      1        136.533   375.381     
+
+  path breakdown:
+  31 -> 33  link_ett=34.133  cumulative=34.133  channel=3  t=20.7426s
+  33 -> 10  link_ett=40.960  cumulative=75.092  channel=3  t=20.7644s
+  10 -> 15  link_ett=0.711  cumulative=75.803  channel=3  t=20.8759s
+  15 -> 18  link_ett=0.640  cumulative=76.443  channel=2  t=20.9529s
+  18 -> 7  link_ett=3.821  cumulative=80.263  channel=1  t=20.9602s
+  7 -> 38  link_ett=0.427  cumulative=80.689  channel=1  t=20.9753s
+  38 -> 49  link_ett=39.690  cumulative=120.378  channel=3  t=21.0752s
+
+  discovery #4 (rreq_id=5)
+  selected cumulative ETT=248.263, next hop=38, next hop channel=2
+
+  selected path:
+  31 -> 35 -> 14 -> 8 -> 26 -> 40 -> 38 -> 49
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=35.9084s    38      2        43.098    248.263     yes
+  t=35.8607s    40      2        43.761    248.327     
+  t=35.9184s    32      1        182.044   267.148     
+  t=35.8709s    38      2        43.098    267.275     
+  t=36.0798s    4       1        85.333    282.242     
+  t=35.8406s    40      2        43.761    294.404     
+  t=35.9263s    43      2        88.200    321.943     
+  t=35.8474s    43      2        88.200    324.712     
+  t=35.8641s    42      2        48.623    370.500     
+  t=35.8214s    42      2        48.623    379.868     
+  t=35.8440s    45      2        43.098    408.476     
+  t=35.7844s    32      1        182.044   410.971     
+  t=35.7359s    32      1        182.044   414.337     
+  t=35.7323s    22      2        145.869   429.533     
+  t=35.8368s    45      2        43.098    652.226     
+  t=35.7930s    37      1        3413.330  3637.520    
+
+  path breakdown:
+  31 -> 35  link_ett=113.778  cumulative=113.777  channel=1  t=35.6906s
+  35 -> 14  link_ett=37.926  cumulative=151.702  channel=3  t=35.7048s
+  14 -> 8  link_ett=42.667  cumulative=194.368  channel=3  t=35.7082s
+  8 -> 26  link_ett=1.024  cumulative=195.392  channel=2  t=35.7188s
+  26 -> 40  link_ett=9.176  cumulative=204.567  channel=1  t=35.8144s
+  40 -> 38  link_ett=0.599  cumulative=205.166  channel=1  t=35.8607s
+  38 -> 49  link_ett=43.098  cumulative=248.263  channel=2  t=35.9084s
+
+  discovery #5 (rreq_id=6)
+  selected cumulative ETT=111.209, next hop=40, next hop channel=2
+
+  selected path:
+  31 -> 27 -> 20 -> 13 -> 43 -> 40 -> 49
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=48.4473s    40      2        48.762    111.209     yes
+  t=48.4124s    40      2        48.762    112.449     
+  t=48.4542s    45      1        34.133    131.954     
+  t=48.6133s    4       3        85.333    149.667     
+  t=48.4227s    43      1        170.667   224.581     
+  t=48.6030s    4       3        85.333    401.339     
+  t=48.4508s    42      1        43.636    433.838     
+  t=48.4157s    45      1        34.133    444.919     
+  t=48.4439s    42      1        43.636    818.270     
+  t=48.4055s    44      1        609.524   956.628     
+  t=48.4193s    44      1        609.524   2127.420    
+
+  path breakdown:
+  31 -> 27  link_ett=1.707  cumulative=1.706  channel=1  t=48.2720s
+  27 -> 20  link_ett=0.610  cumulative=2.315  channel=2  t=48.3028s
+  20 -> 13  link_ett=0.571  cumulative=2.886  channel=1  t=48.3337s
+  13 -> 43  link_ett=51.030  cumulative=53.915  channel=3  t=48.3503s
+  43 -> 40  link_ett=8.533  cumulative=62.448  channel=1  t=48.4227s
+  40 -> 49  link_ett=48.762  cumulative=111.209  channel=2  t=48.4473s
+
+source=34 destination=41
+discoveries=1
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=4.503, next hop=15, next hop channel=1
+
+  selected path:
+  34 -> 15 -> 41
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=38.5020s    15      1        3.793     4.503       yes
+  t=38.4919s    34      1        5.689     5.688       
+  t=38.5162s    18      1        6.966     7.391       
+  t=38.5744s    11      1        13.653    14.186      
+  t=38.6025s    24      1        6.117     40.783      
+  t=38.5778s    21      1        4.214     42.849      
+  t=38.5505s    24      1        6.117     44.042      
+  t=38.4953s    21      1        4.214     73.030      
+  t=38.4986s    9       1        6.252     75.745      
+  t=38.5607s    10      1        6.117     109.744     
+  t=38.5269s    46      1        8.777     116.623     
+  t=38.5368s    10      1        6.117     122.341     
+  t=38.5219s    28      1        5.689     126.127     
+  t=38.5303s    28      1        5.689     131.393     
+  t=38.5057s    46      1        8.777     132.294     
+
+  path breakdown:
+  34 -> 15  link_ett=0.711  cumulative=0.711  channel=1  t=38.4919s
+  15 -> 41  link_ett=3.793  cumulative=4.503  channel=1  t=38.5020s

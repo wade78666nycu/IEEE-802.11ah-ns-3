@@ -1181,7 +1181,9 @@ WifiRemoteStationManager::GetBlockAckTxVector (Mac48Address address, WifiMode bl
 uint8_t
 WifiRemoteStationManager::DoGetCtsTxPowerLevel (Mac48Address address, WifiMode ctsMode)
 {
-  return m_defaultTxPowerLevel;
+  // Use highest power level for CTS to avoid asymmetric link failures
+  uint32_t nTxPower = m_wifiPhy->GetNTxPower ();
+  return (nTxPower > 1) ? static_cast<uint8_t> (nTxPower - 1) : m_defaultTxPowerLevel;
 }
 
 bool
@@ -1211,7 +1213,9 @@ WifiRemoteStationManager::DoGetCtsTxStbc (Mac48Address address, WifiMode ctsMode
 uint8_t
 WifiRemoteStationManager::DoGetAckTxPowerLevel (Mac48Address address, WifiMode ackMode)
 {
-  return m_defaultTxPowerLevel;
+  // Use highest power level for ACK to avoid asymmetric link failures
+  uint32_t nTxPower = m_wifiPhy->GetNTxPower ();
+  return (nTxPower > 1) ? static_cast<uint8_t> (nTxPower - 1) : m_defaultTxPowerLevel;
 }
 
 bool
@@ -1241,7 +1245,9 @@ WifiRemoteStationManager::DoGetAckTxStbc (Mac48Address address, WifiMode ackMode
 uint8_t
 WifiRemoteStationManager::DoGetBlockAckTxPowerLevel (Mac48Address address, WifiMode blockAckMode)
 {
-  return m_defaultTxPowerLevel;
+  // Use highest power level for BlockACK to avoid asymmetric link failures
+  uint32_t nTxPower = m_wifiPhy->GetNTxPower ();
+  return (nTxPower > 1) ? static_cast<uint8_t> (nTxPower - 1) : m_defaultTxPowerLevel;
 }
 
 bool

@@ -54,9 +54,10 @@ class Application;
 	    Time run_interval; // interval of how long Hello_beacon_App runs per cycle
     	Time wait_interval; // interval to wait until next cycle starts
 
-  	private:
 		void StartApplication() override;
 		void StopApplication() override;
+
+  	private:
 
 		void set_socket();
 		Time get_backoff_time();
@@ -114,6 +115,9 @@ class Application;
 	    std::vector<double> m_last_phy_rate_bps_by_if;
 	    // Guard against repeatedly connecting trace callbacks every hello cycle.
 	    std::vector<bool> m_phy_trace_connected_by_if;
+	    // True after the first hello cycle has completed; subsequent cycles accumulate
+	    // neighbour data instead of clearing it.
+	    bool m_hasRunOnce{false};
 	    // Per-instance RNG for hello backoff — avoids shared-state ordering bias.
 	    Ptr<UniformRandomVariable> m_uv;
 	};

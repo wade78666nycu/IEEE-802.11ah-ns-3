@@ -6,7 +6,7 @@
 #include "ns3/mobility-module.h"
 #include "ns3/network-module.h"
 #include "ns3/vector.h"
-//#include "ns3/wifi-module.h"
+#include "ns3/wifi-module.h"
 
 #include <chrono>
 #include <iomanip>
@@ -48,14 +48,16 @@ class Application;
 	    double get_etx(uint32_t neighbor_id, uint32_t ifIndex);
 	    double get_ett(uint32_t neighbor_id, uint32_t ifIndex);
 	    void set_max_packet_count(const uint32_t max_count);
+	    void update_phy_rate_sample(uint32_t ifIndex, const WifiTxVector& txvector);
 
 	    bool enable_print_neighbor;
 	    Time run_interval; // interval of how long Hello_beacon_App runs per cycle
     	Time wait_interval; // interval to wait until next cycle starts
 
-  	private:
 		void StartApplication() override;
 		void StopApplication() override;
+
+  	private:
 
 		void set_socket();
 		Time get_backoff_time();
@@ -107,5 +109,16 @@ class Application;
 	    // Keyed by neighbour id, the value is the delivery ratio that the neighbour computed for
 	    // packets *from* this node (i.e. our DF as seen by them).
 	    std::vector<std::map<uint32_t, double>> m_neighbor_df_by_if;
+
+	    // Last sampled PHY tx rate per interface (bps), updated from MonitorSnifferTx.
+	    // Index 0 is reserved for loopback.
+	    std::vector<double> m_last_phy_rate_bps_by_if;
+	    // Guard against repeatedly connecting trace callbacks every hello cycle.
+	    std::vector<bool> m_phy_trace_connected_by_if;
+	    // True after the first hello cycle has completed; subsequent cycles accumulate
+	    // neighbour data instead of clearing it.
+	    bool m_hasRunOnce{false};
+	    // Per-instance RNG for hello backoff — avoids shared-state ordering bias.
+	    Ptr<UniformRandomVariable> m_uv;
 	};
 } // namespace ns3

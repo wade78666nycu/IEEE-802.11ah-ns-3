@@ -1,0 +1,14 @@
+scenario=rand
+routing_method=aodv
+enable_hello=false
+enable_power_control=false
+prefer_low_power_channel=false
+channel_selection_ett_tolerance=1.100000
+total_sent_packets=2100
+total_received_packets=745
+pdr_percent=35.476190
+throughput_bps=36413.033815
+avg_delay_ms=360.537774
+max_delay_ms=4710.595427
+data_transfer_duration_s=41.901480
+total_simulation_time_s=60.000000

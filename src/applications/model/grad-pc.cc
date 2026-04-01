@@ -208,7 +208,7 @@ GradPC_App::gradPC_proportional_power(const int device_idx, const unsigned int n
     }
     m_neighbor_list[device_idx] = std::move(neighbor_set);
     const float tx_power = calculate_tx_power(tx_distance);
-    NS_LOG_UNCOND("[GradPCII] node=" << GetNode()->GetId()
+    /*NS_LOG_UNCOND("[GradPCII] node=" << GetNode()->GetId()
                                       << " deviceIdx=" << device_idx
                                       << " inputNeighbors=" << neighbor_size
                                       << " upperbound=" << neighbor_upperbound
@@ -217,7 +217,7 @@ GradPC_App::gradPC_proportional_power(const int device_idx, const unsigned int n
                                       << " extraDistance=" << m_extra_tx_distance
                                       << " txDistance=" << tx_distance
                                       << " resultNeighbors=" << m_neighbor_list[device_idx].size()
-                                      << " txPower(dBm)=" << tx_power);
+                                      << " txPower(dBm)=" << tx_power);*/
     return tx_power;
 }
 
@@ -264,7 +264,7 @@ GradPC_App::get_device_power_dBm(const unsigned int device_idx)
 {
     Ptr<WifiNetDevice> wifi_device = DynamicCast<WifiNetDevice>(m_node->GetDevice(device_idx));
     Ptr<YansWifiPhy> wifi_phy = DynamicCast<YansWifiPhy>(wifi_device->GetPhy());
-    return wifi_phy->GetTxPowerEnd();
+    return wifi_phy->GetTxPowerStart();
 }
 
 double
@@ -378,10 +378,10 @@ GradPC_App::set_tx_power(float tx_power_dBm, const unsigned int device_idx)
         tx_power_dBm = maxPower;
         tx_power_valid = false; // indicate it was adjusted
     }
-    // Force a single PHY power level so all outgoing frames on this interface,
-    // including hello beacons, use the GradPC-computed tx power.
+    // Only reduce TxPowerStart (level 0) for data/hello frames.
+    // Keep TxPowerEnd at original max so ACK/CTS (sent at highest power level)
+    // can still reach the sender, avoiding asymmetric link failures.
     wifi_phy->SetTxPowerStart(tx_power_dBm);
-    wifi_phy->SetTxPowerEnd(tx_power_dBm);
     return tx_power_valid;
 }
 
@@ -396,11 +396,9 @@ GradPC_App::adjust_tx_power(const short gradPC_func_type, const unsigned int dev
 
     GradPC_type func_type = static_cast<GradPC_type>(gradPC_func_type);
     float tx_power {};
-    // Build layered power control: channel i is derived from the previous layer
-    // so each next channel can further shrink coverage instead of recomputing
-    // from the same original neighbor set.
-    const unsigned int prev_idx = (device_idx == 0) ? 0 : (device_idx - 1);
-    const unsigned int neighbor_size = m_neighbor_list[prev_idx].size();
+    // All channels compute power from the same original full-power neighbor set
+    // to avoid cascading reduction that makes higher-index channels too weak.
+    const unsigned int neighbor_size = m_neighbor_list[0].size();
     if (func_type == GradPC_type::logarithmic)
     {
         tx_power = gradPC_log_power(device_idx, neighbor_size);

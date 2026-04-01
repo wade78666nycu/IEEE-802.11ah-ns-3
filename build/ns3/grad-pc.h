@@ -37,7 +37,7 @@ class GradPC_App : public Application
     : m_print_neighbor_list(false),
       operating_freq(920.0),
       path_loss_exp(2.5),
-      gradPC_proportional_delta(0.4),
+      gradPC_proportional_delta(0.3),
       wait_interval(0),
       m_location_obtainable(true),
       m_reduce_default_power(false),

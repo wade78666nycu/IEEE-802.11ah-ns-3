@@ -286,6 +286,11 @@
   }, 
   {
     "directory": "/home/wade/ah-lab/build", 
+    "command": "/usr/bin/g++ -Wno-error -ggdb -std=c++17 -fPIC -pthread -I. -I.. -DNS3_BUILD_PROFILE_DEBUG -DNS3_ASSERT_ENABLE -DNS3_LOG_ENABLE -DHAVE_SYS_IOCTL_H=1 -DHAVE_IF_NETS_H=1 -DHAVE_NET_ETHERNET_H=1 -DHAVE_PACKET_H=1 -DHAVE_IF_TUN_H=1 -DHAVE_GSL=1 -DHAVE_SQLITE3=1 ../src/wifi/model/wifi-remote-station-manager.cc -c -o /home/wade/ah-lab/build/src/wifi/model/wifi-remote-station-manager.cc.1.o", 
+    "file": "../src/wifi/model/wifi-remote-station-manager.cc"
+  }, 
+  {
+    "directory": "/home/wade/ah-lab/build", 
     "command": "/usr/bin/g++ -Wno-error -ggdb -std=c++17 -fPIC -pthread -Isrc/aodv -I../src/aodv -I. -I.. -DNS3_BUILD_PROFILE_DEBUG -DNS3_ASSERT_ENABLE -DNS3_LOG_ENABLE -DHAVE_SYS_IOCTL_H=1 -DHAVE_IF_NETS_H=1 -DHAVE_NET_ETHERNET_H=1 -DHAVE_PACKET_H=1 -DHAVE_IF_TUN_H=1 -DHAVE_GSL=1 -DHAVE_SQLITE3=1 ../src/aodv/model/aodv-routing-protocol.cc -c -o /home/wade/ah-lab/build/src/aodv/model/aodv-routing-protocol.cc.1.o", 
     "file": "../src/aodv/model/aodv-routing-protocol.cc"
   }, 
@@ -398,6 +403,11 @@
     "directory": "/home/wade/ah-lab/build", 
     "command": "/usr/bin/g++ -Wno-error -ggdb -std=c++17 -pthread -I. -I.. -DNS3_BUILD_PROFILE_DEBUG -DNS3_ASSERT_ENABLE -DNS3_LOG_ENABLE -DHAVE_SYS_IOCTL_H=1 -DHAVE_IF_NETS_H=1 -DHAVE_NET_ETHERNET_H=1 -DHAVE_PACKET_H=1 -DHAVE_IF_TUN_H=1 -DHAVE_GSL=1 ../utils/bench-simulator.cc -c -o /home/wade/ah-lab/build/utils/bench-simulator.cc.2.o", 
     "file": "../utils/bench-simulator.cc"
+  }, 
+  {
+    "directory": "/home/wade/ah-lab/build", 
+    "command": "/usr/bin/g++ -Wno-error -ggdb -std=c++17 -pthread -pthread -I. -I.. -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/pango-1.0 -I/usr/include/atk-1.0 -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/x86_64-linux-gnu -I/usr/include/harfbuzz -I/usr/include/libmount -I/usr/include/blkid -I/usr/include/fribidi -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/uuid -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/libxml2 -DNS3_BUILD_PROFILE_DEBUG -DNS3_ASSERT_ENABLE -DNS3_LOG_ENABLE -DHAVE_SYS_IOCTL_H=1 -DHAVE_IF_NETS_H=1 -DHAVE_NET_ETHERNET_H=1 -DHAVE_PACKET_H=1 -DHAVE_IF_TUN_H=1 -DHAVE_GSL=1 -DHAVE_SQLITE3=1 -DHAVE_GTK2=1 -DHAVE_LIBXML2=1 ../scratch/rand-exp/trace.cc -c -o /home/wade/ah-lab/build/scratch/rand-exp/trace.cc.1.o", 
+    "file": "../scratch/rand-exp/trace.cc"
   }, 
   {
     "directory": "/home/wade/ah-lab/build", 
@@ -723,6 +733,11 @@
     "directory": "/home/wade/ah-lab/build", 
     "command": "/usr/bin/g++ -Wno-error -ggdb -std=c++17 -fPIC -pthread -I. -I.. -DNS3_BUILD_PROFILE_DEBUG -DNS3_ASSERT_ENABLE -DNS3_LOG_ENABLE -DHAVE_SYS_IOCTL_H=1 -DHAVE_IF_NETS_H=1 -DHAVE_NET_ETHERNET_H=1 -DHAVE_PACKET_H=1 -DHAVE_IF_TUN_H=1 -DHAVE_GSL=1 ../src/core/model/attribute.cc -c -o /home/wade/ah-lab/build/src/core/model/attribute.cc.1.o", 
     "file": "../src/core/model/attribute.cc"
+  }, 
+  {
+    "directory": "/home/wade/ah-lab/build", 
+    "command": "/usr/bin/g++ -Wno-error -ggdb -std=c++17 -pthread -pthread -I. -I.. -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/pango-1.0 -I/usr/include/atk-1.0 -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/x86_64-linux-gnu -I/usr/include/harfbuzz -I/usr/include/libmount -I/usr/include/blkid -I/usr/include/fribidi -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/uuid -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/libxml2 -DNS3_BUILD_PROFILE_DEBUG -DNS3_ASSERT_ENABLE -DNS3_LOG_ENABLE -DHAVE_SYS_IOCTL_H=1 -DHAVE_IF_NETS_H=1 -DHAVE_NET_ETHERNET_H=1 -DHAVE_PACKET_H=1 -DHAVE_IF_TUN_H=1 -DHAVE_GSL=1 -DHAVE_SQLITE3=1 -DHAVE_GTK2=1 -DHAVE_LIBXML2=1 ../scratch/grid-exp/trace.cc -c -o /home/wade/ah-lab/build/scratch/grid-exp/trace.cc.2.o", 
+    "file": "../scratch/grid-exp/trace.cc"
   }, 
   {
     "directory": "/home/wade/ah-lab/build", 
@@ -1063,6 +1078,11 @@
     "directory": "/home/wade/ah-lab/build", 
     "command": "/usr/bin/g++ -Wno-error -ggdb -std=c++17 -fPIC -pthread -Isrc/aodv -I../src/aodv -I. -I.. -DNS3_BUILD_PROFILE_DEBUG -DNS3_ASSERT_ENABLE -DNS3_LOG_ENABLE -DHAVE_SYS_IOCTL_H=1 -DHAVE_IF_NETS_H=1 -DHAVE_NET_ETHERNET_H=1 -DHAVE_PACKET_H=1 -DHAVE_IF_TUN_H=1 -DHAVE_GSL=1 -DHAVE_SQLITE3=1 ../src/aodv/model/aodv-rqueue.cc -c -o /home/wade/ah-lab/build/src/aodv/model/aodv-rqueue.cc.1.o", 
     "file": "../src/aodv/model/aodv-rqueue.cc"
+  }, 
+  {
+    "directory": "/home/wade/ah-lab/build", 
+    "command": "/usr/bin/g++ -Wno-error -ggdb -std=c++17 -pthread -pthread -I. -I.. -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/pango-1.0 -I/usr/include/atk-1.0 -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/x86_64-linux-gnu -I/usr/include/harfbuzz -I/usr/include/libmount -I/usr/include/blkid -I/usr/include/fribidi -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/uuid -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/libxml2 -DNS3_BUILD_PROFILE_DEBUG -DNS3_ASSERT_ENABLE -DNS3_LOG_ENABLE -DHAVE_SYS_IOCTL_H=1 -DHAVE_IF_NETS_H=1 -DHAVE_NET_ETHERNET_H=1 -DHAVE_PACKET_H=1 -DHAVE_IF_TUN_H=1 -DHAVE_GSL=1 -DHAVE_SQLITE3=1 -DHAVE_GTK2=1 -DHAVE_LIBXML2=1 ../scratch/grid-exp/energy-trace.cc -c -o /home/wade/ah-lab/build/scratch/grid-exp/energy-trace.cc.2.o", 
+    "file": "../scratch/grid-exp/energy-trace.cc"
   }, 
   {
     "directory": "/home/wade/ah-lab/build", 

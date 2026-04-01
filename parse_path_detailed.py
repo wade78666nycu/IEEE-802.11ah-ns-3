@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Parse AODV logs and reconstruct selected ETT-based paths.
 
-By default, the report is filtered to the main application flows declared in
-scratch/grid-exp/grid-exp.cc. Use --all to include every AODV route discovery.
+Supports both grid and rand experiments via --scenario.
+Use --all to include every AODV route discovery.
 """
 
 import argparse
@@ -23,6 +23,7 @@ SELECTED_RE = re.compile(
     r"selected cumulative ETT=([\d.]+) nextHop=([0-9.]+)(?: nextHopChannel=(\d+))?"
 )
 PUSH_RE = re.compile(r"\b(src_node_vec|dst_node_vec)\.emplace_back\((\d+)\)")
+INIT_RE = re.compile(r"\b(src_node_vec|dst_node_vec)\s*=\s*\{([^}]*)\}", re.S)
 
 
 def strip_cpp_comments(text):
@@ -74,6 +75,14 @@ def load_main_flows(config_file):
             src_nodes.append(int(node_id))
         else:
             dst_nodes.append(int(node_id))
+
+    for match in INIT_RE.finditer(content):
+        vector_name, values = match.groups()
+        node_ids = [int(token) for token in re.findall(r"\d+", values)]
+        if vector_name == "src_node_vec":
+            src_nodes = node_ids
+        else:
+            dst_nodes = node_ids
 
     if not src_nodes or len(src_nodes) != len(dst_nodes):
         return None
@@ -304,12 +313,18 @@ def build_report(rreq_graph, selected_path, allowed_pairs=None):
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("log_file", nargs="?", default="/home/wade/ah-lab/aodv_grid_path.log")
-    parser.add_argument("report_file", nargs="?", default="/home/wade/ah-lab/aodv_path_report.txt")
+    parser.add_argument("log_file", nargs="?", default=None)
+    parser.add_argument("report_file", nargs="?", default=None)
+    parser.add_argument(
+        "--scenario",
+        choices=["grid", "rand"],
+        default="grid",
+        help="Experiment scenario for default input/output files.",
+    )
     parser.add_argument(
         "--config",
-        default="/home/wade/ah-lab/scratch/grid-exp/grid-exp.cc",
-        help="Path to grid-exp.cc used to discover main src/dst flow pairs.",
+        default=None,
+        help="Path to config file used to discover main src/dst flow pairs.",
     )
     parser.add_argument(
         "--all",
@@ -319,8 +334,28 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
+def apply_scenario_defaults(args):
+    root = Path("/home/wade/ah-lab/output_file") / args.scenario
+
+    if args.log_file is None:
+        args.log_file = str(root / f"aodv_{args.scenario}_path.log")
+
+    if args.report_file is None:
+        args.report_file = str(root / "aodv_path_report.txt")
+
+    if args.config is None:
+        if args.scenario == "grid":
+            args.config = str(root / "scratch/grid-exp/grid-exp.cc")
+        else:
+            # rand src/dst pairs are generated via assign-src-dst-pair;
+            # if static flow extraction fails, script falls back to include all discoveries.
+            args.config = str(root / "scratch/rand-exp/rand-exp.cc")
+
+    return args
+
+
 def main(argv=None):
-    args = parse_args(argv or sys.argv[1:])
+    args = apply_scenario_defaults(parse_args(argv or sys.argv[1:]))
     log_file = args.log_file
     report_file = args.report_file
     rreq_graph, selected_path = parse_log(log_file)

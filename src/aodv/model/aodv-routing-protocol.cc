@@ -168,6 +168,7 @@ RoutingProtocol::RoutingProtocol()
 	  m_rreqCount(0),
 	  m_rerrCount(0),
 	  m_rreqWaitTime(MilliSeconds(50)),
+	  m_useEttRouting(true),
 	  m_enableIntermediateRrep(false),
 	  m_htimer(Timer::CANCEL_ON_DESTROY),
 	  m_rreqRateLimitTimer(Timer::CANCEL_ON_DESTROY),
@@ -311,6 +312,22 @@ RoutingProtocol::GetTypeId(void)
 						  TimeValue(MilliSeconds(50)),
 						  MakeTimeAccessor(&RoutingProtocol::m_rreqWaitTime),
 						  MakeTimeChecker())
+			.AddAttribute("ChannelSelectionEttTolerance",
+						  "When multiple channels have similar ETT, prefer the lower-power channel."
+						  " Values >= 1.0; 1.05 means accept channels up to 5% worse than the minimum ETT.",
+						  DoubleValue(1.05),
+						  MakeDoubleAccessor(&RoutingProtocol::m_channelSelectionEttTolerance),
+						  MakeDoubleChecker<double>(1.0))
+			.AddAttribute("PreferLowPowerChannel",
+						  "If false, channel selection is based only on minimum ETT and ignores transmit power.",
+						  BooleanValue(true),
+						  MakeBooleanAccessor(&RoutingProtocol::m_preferLowPowerChannel),
+						  MakeBooleanChecker())
+			.AddAttribute("UseEttRouting",
+						  "If false, disable ETT/channel-aware custom routing behavior and use traditional AODV logic.",
+						  BooleanValue(true),
+						  MakeBooleanAccessor(&RoutingProtocol::m_useEttRouting),
+						  MakeBooleanChecker())
 			.AddAttribute("EnableIntermediateRrep",
 						  "Enable intermediate node RREP replies (disabled for ETT-based route selection)",
 						  BooleanValue(false),
@@ -411,6 +428,42 @@ RoutingProtocol::BuildRreqKey(Ipv4Address origin, uint32_t requestId) const
 	return Ipv4addr_to_str(origin) + "|" + std::to_string(requestId);
 }
 
+bool
+RoutingProtocol::ResolveRouteOnChannel(Ipv4Address neighbor,
+						   uint8_t channel,
+						   Ptr<NetDevice>& dev,
+						   Ipv4InterfaceAddress& iface,
+						   Ipv4Address& nextHop) const
+{
+	if (!m_ipv4 || !m_node)
+	{
+		return false;
+	}
+
+	const uint32_t ifIndex = static_cast<uint32_t>(channel);
+	if (ifIndex == 0 || ifIndex >= m_ipv4->GetNInterfaces() || m_ipv4->GetNAddresses(ifIndex) == 0)
+	{
+		return false;
+	}
+
+	Ptr<Node> neighborNode = get_node_with_address(neighbor);
+	if (!neighborNode)
+	{
+		return false;
+	}
+
+	Ptr<Ipv4> neighborIpv4 = neighborNode->GetObject<Ipv4>();
+	if (!neighborIpv4 || ifIndex >= neighborIpv4->GetNInterfaces() || neighborIpv4->GetNAddresses(ifIndex) == 0)
+	{
+		return false;
+	}
+
+	dev = m_ipv4->GetNetDevice(ifIndex);
+	iface = m_ipv4->GetAddress(ifIndex, 0);
+	nextHop = neighborIpv4->GetAddress(ifIndex, 0).GetLocal();
+	return dev != nullptr;
+}
+
 double
 RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel) const
 {
@@ -443,7 +496,7 @@ RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel
 
 	const uint32_t neighborId = static_cast<uint32_t>(it->second);
 	const uint32_t ifaceCount = m_node->GetNDevices() > 0 ? (m_node->GetNDevices() - 1) : 0;
-	double bestEtt = std::numeric_limits<double>::infinity();
+	double minEtt = std::numeric_limits<double>::infinity();
 	for (uint32_t ifIndex = 1; ifIndex <= ifaceCount; ++ifIndex)
 	{
 		double ett = helloApp->get_ett(neighborId, ifIndex);
@@ -451,14 +504,50 @@ RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel
 		{
 			continue;
 		}
-		if (ett < bestEtt)
+		if (ett < minEtt)
 		{
-			bestEtt = ett;
-			bestChannel = static_cast<uint8_t>(ifIndex);
+			minEtt = ett;
 		}
 	}
 
-	return bestEtt;
+	if (!std::isfinite(minEtt))
+	{
+		return minEtt;
+	}
+
+	if (!m_preferLowPowerChannel)
+	{
+		for (uint32_t ifIndex = 1; ifIndex <= ifaceCount; ++ifIndex)
+		{
+			double ett = helloApp->get_ett(neighborId, ifIndex);
+			if (!std::isfinite(ett))
+			{
+				continue;
+			}
+			if (ett == minEtt)
+			{
+				bestChannel = static_cast<uint8_t>(ifIndex);
+				return ett;
+			}
+		}
+		return minEtt;
+	}
+
+	// Channels are ordered by decreasing power: ch1 > ch2 > ch3.
+	// Iterate from lowest power (highest index) and pick the first within ETT tolerance.
+	const double ettThreshold = minEtt * m_channelSelectionEttTolerance;
+	for (uint32_t ifIndex = ifaceCount; ifIndex >= 1; --ifIndex)
+	{
+		double ett = helloApp->get_ett(neighborId, ifIndex);
+		if (!std::isfinite(ett) || ett > ettThreshold)
+		{
+			continue;
+		}
+		bestChannel = static_cast<uint8_t>(ifIndex);
+		return ett;
+	}
+
+	return minEtt;
 }
 
 void
@@ -493,8 +582,8 @@ RoutingProtocol::print_routing_table()
 void
 RoutingProtocol::check_valid_link(Ptr<Packet> packet, Ptr<NetDevice> dev, Ipv4Address nextHop) {
     NS_LOG_FUNCTION(this << "nextHop: " << nextHop);
-    // get neighbor list
-    static thread_local auto neighbor_list = DynamicCast<GradPC_App>(m_node->GetApplication(gradpc_app_idx))->get_neighbor_list();
+    // get neighbor list from this node's own GradPC application
+    auto neighbor_list = DynamicCast<GradPC_App>(m_node->GetApplication(gradpc_app_idx))->get_neighbor_list();
     Ptr<WifiNetDevice> wifi_device = DynamicCast<WifiNetDevice>(dev);
     Ptr<YansWifiPhy> wifi_phy = DynamicCast<YansWifiPhy>(wifi_device->GetPhy());
     unsigned int device_idx = wifi_device->GetIfIndex();
@@ -1256,6 +1345,7 @@ RoutingProtocol::SendRequest(Ipv4Address dst)
 			destination = iface.GetBroadcast();
 		}
 		NS_LOG_DEBUG("Send RREQ with id " << rreqHeader.GetId() << " to socket");
+		NS_LOG_DEBUG("AODV_METRIC TX type=RREQ origin=" << rreqHeader.GetOrigin() << " dst=" << dst);
         //NS_LOG_DEBUG("destination: " << destination);
 		m_lastBcastTime = Simulator::Now();
 		Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
@@ -1330,18 +1420,22 @@ RoutingProtocol::RecvAodv(Ptr<Socket> socket)
 	switch (tHeader.Get())
 	{
 	case AODVTYPE_RREQ: {
+		NS_LOG_DEBUG("AODV_METRIC RX type=RREQ from=" << sender << " to=" << receiver);
 		RecvRequest(packet, receiver, sender);
 		break;
 	}
 	case AODVTYPE_RREP: {
+		NS_LOG_DEBUG("AODV_METRIC RX type=RREP from=" << sender << " to=" << receiver);
 		RecvReply(packet, receiver, sender);
 		break;
 	}
 	case AODVTYPE_RERR: {
+		NS_LOG_DEBUG("AODV_METRIC RX type=RERR from=" << sender << " to=" << receiver);
 		RecvError(packet, sender);
 		break;
 	}
 	case AODVTYPE_RREP_ACK: {
+		NS_LOG_DEBUG("AODV_METRIC RX type=RREP_ACK from=" << sender << " to=" << receiver);
 		RecvReplyAck(sender);
 		break;
 	}
@@ -1424,25 +1518,36 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 
 	uint32_t id = rreqHeader.GetId();
 	Ipv4Address origin = rreqHeader.GetOrigin();
-	uint8_t bestChannelToSender = 1;
-	double bestLinkEtt = GetBestEttToNeighbor(src, bestChannelToSender);
-	if (!std::isfinite(bestLinkEtt))
+	uint8_t bestChannelToSender = static_cast<uint8_t>(m_ipv4->GetInterfaceForAddress(receiver));
+	double bestLinkEtt = 1.0;
+	if (m_useEttRouting)
 	{
-		bestLinkEtt = 1e6;
+		bestChannelToSender = 1;
+		bestLinkEtt = GetBestEttToNeighbor(src, bestChannelToSender);
+		if (!std::isfinite(bestLinkEtt))
+		{
+			bestLinkEtt = 1e6;
+		}
+		double prevCumulativeEtt = rreqHeader.GetCumulativeEtt();
+		rreqHeader.SetCumulativeEtt(prevCumulativeEtt + bestLinkEtt);
+		NS_LOG_DEBUG("RecvRequest ETT accumulate: origin=" << origin << " id=" << id << " sender=" << src
+										 << " bestChannel=" << static_cast<uint32_t>(bestChannelToSender)
+										 << " bestLinkEtt=" << bestLinkEtt
+										 << " cumulative(before=" << prevCumulativeEtt
+										 << ", after=" << rreqHeader.GetCumulativeEtt() << ")");
 	}
-	double prevCumulativeEtt = rreqHeader.GetCumulativeEtt();
-	rreqHeader.SetCumulativeEtt(prevCumulativeEtt + bestLinkEtt);
-	NS_LOG_DEBUG("RecvRequest ETT accumulate: origin=" << origin << " id=" << id << " sender=" << src
-											 << " bestChannel=" << static_cast<uint32_t>(bestChannelToSender)
-											 << " bestLinkEtt=" << bestLinkEtt
-											 << " cumulative(before=" << prevCumulativeEtt
-											 << ", after=" << rreqHeader.GetCumulativeEtt() << ")");
+	else
+	{
+		rreqHeader.SetCumulativeEttMetric(0);
+	}
 
 	/*
 	 *  Node checks to determine whether it has received a RREQ with the same Originator IP Address and RREQ ID.
 	 *  If such a RREQ has been received, the node silently discards the newly received RREQ.
 	 */
-	if (m_rreqIdCache.IsDuplicate(origin, id, rreqHeader.GetCumulativeEttMetric()))
+	// Destination bypasses MaxReforwardCount to let delayed RREP see all improving candidates
+	bool isDst = m_useEttRouting && IsMyOwnAddress(rreqHeader.GetDst());
+	if (m_rreqIdCache.IsDuplicate(origin, id, m_useEttRouting ? rreqHeader.GetCumulativeEttMetric() : 0, isDst))
 	{
 		NS_LOG_DEBUG("Ignoring RREQ due to non-improving cumulative ETT: origin="
 						 << origin << " id=" << id << " cumulative=" << rreqHeader.GetCumulativeEtt());
@@ -1468,6 +1573,11 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 	// channel hop
 	int32_t iif = m_ipv4->GetInterfaceForAddress(receiver); // get interface index
 	Ptr<NetDevice> dev = m_ipv4->GetNetDevice(iif);
+	Ipv4InterfaceAddress outIface = m_ipv4->GetAddress(iif, 0);
+	Ipv4Address nextHopAddr = src;
+	// Reverse route (for RREP) always stays on device 0 (full power) for reliability.
+	// ETT metric is still collected via GetBestEttToNeighbor above for path selection.
+	// Only data forwarding routes (built in RecvReply) use the best ETT channel.
 
 	RoutingTableEntry toOrigin;
 	if (!m_routingTable.LookupRoute(origin, toOrigin))
@@ -1478,11 +1588,11 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 								   origin,													  // dst
 								   true,													  // validSeqNo
 								   rreqHeader.GetOriginSeqno(),								  // seqNo
-								   m_ipv4->GetAddress(iif, 0),								  // iface
+							   outIface,														  // iface
 								   hop,														  // hops
-								   src,														  // nextHop
+							   nextHopAddr,												  // nextHop
 							   Time((2 * NetTraversalTime - 2 * hop * NodeTraversalTime)), // timeLife
-							   rreqHeader.GetCumulativeEtt(),
+						   m_useEttRouting ? rreqHeader.GetCumulativeEtt() : static_cast<double>(hop),
 							   bestChannelToSender
 		);
 		m_routingTable.AddRoute(newEntry);
@@ -1497,13 +1607,13 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 		else
 			toOrigin.SetSeqNo(rreqHeader.GetOriginSeqno());
 		toOrigin.SetValidSeqNo(true);
-		toOrigin.SetNextHop(src);
+		toOrigin.SetNextHop(nextHopAddr);
 		// toOrigin.SetOutputDevice(m_ipv4->GetNetDevice(m_ipv4->GetInterfaceForAddress(receiver)));
 		// toOrigin.SetInterface(m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0));
 		toOrigin.SetOutputDevice(dev);
-		toOrigin.SetInterface(m_ipv4->GetAddress(iif, 0));
+		toOrigin.SetInterface(outIface);
 		toOrigin.SetHop(hop);
-		toOrigin.SetPathEtt(rreqHeader.GetCumulativeEtt());
+		toOrigin.SetPathEtt(m_useEttRouting ? rreqHeader.GetCumulativeEtt() : static_cast<double>(hop));
 		toOrigin.SetNextHopChannel(bestChannelToSender);
 		toOrigin.SetLifeTime(
 			std::max(Time(2 * NetTraversalTime - 2 * hop * NodeTraversalTime), toOrigin.GetLifeTime()));
@@ -1524,11 +1634,11 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 								   false,
 								   rreqHeader.GetOriginSeqno(),
 								   // m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0),
-								   m_ipv4->GetAddress(iif, 0),
+							   outIface,
 								   1,
-								   src,
+							   nextHopAddr,
 							   ActiveRouteTimeout,
-							   bestLinkEtt,
+						   m_useEttRouting ? bestLinkEtt : 1.0,
 							   bestChannelToSender);
 		m_routingTable.AddRoute(newEntry);
 	}
@@ -1538,11 +1648,11 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 		toNeighbor.SetValidSeqNo(false);
 		toNeighbor.SetSeqNo(rreqHeader.GetOriginSeqno());
 		toNeighbor.SetFlag(VALID);
-		toNeighbor.SetOutputDevice(m_ipv4->GetNetDevice(m_ipv4->GetInterfaceForAddress(receiver)));
-		toNeighbor.SetInterface(m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0));
+		toNeighbor.SetOutputDevice(dev);
+		toNeighbor.SetInterface(outIface);
 		toNeighbor.SetHop(1);
-		toNeighbor.SetNextHop(src);
-		toNeighbor.SetPathEtt(bestLinkEtt);
+		toNeighbor.SetNextHop(nextHopAddr);
+		toNeighbor.SetPathEtt(m_useEttRouting ? bestLinkEtt : 1.0);
 		toNeighbor.SetNextHopChannel(bestChannelToSender);
 		m_routingTable.Update(toNeighbor);
 	}
@@ -1556,6 +1666,11 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 	if (IsMyOwnAddress(rreqHeader.GetDst()))
 	{
 		m_routingTable.LookupRoute(origin, toOrigin);
+		if (!m_useEttRouting)
+		{
+			SendReply(rreqHeader, toOrigin);
+			return;
+		}
 		const std::string key = BuildRreqKey(origin, id);
 		auto pendingIt = m_pendingRreqReply.find(key);
 		if (pendingIt == m_pendingRreqReply.end())
@@ -1686,6 +1801,7 @@ RoutingProtocol::SendReply(const RreqHeader& rreqHeader, const RoutingTableEntry
 	packet->AddHeader(tHeader);
 	Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
 	NS_ASSERT(socket);
+	NS_LOG_DEBUG("AODV_METRIC TX type=RREP dst=" << rreqHeader.GetDst() << " origin=" << toOrigin.GetDestination());
 
     // check if using gradpc app
     auto nextHop = toOrigin.GetNextHop();
@@ -1730,6 +1846,7 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst, RoutingTa
 	packet->AddHeader(tHeader);
 	Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
 	NS_ASSERT(socket);
+	NS_LOG_DEBUG("AODV_METRIC TX type=RREP dst=" << toDst.GetDestination() << " origin=" << toOrigin.GetDestination());
 	socket->SendTo(packet, 0, InetSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
 
 	// Generating gratuitous RREPs
@@ -1748,6 +1865,7 @@ RoutingProtocol::SendReplyByIntermediateNode(RoutingTableEntry& toDst, RoutingTa
 		Ptr<Socket> socket = FindSocketWithInterfaceAddress(toDst.GetInterface());
 		NS_ASSERT(socket);
 		NS_LOG_LOGIC("Send gratuitous RREP " << packet->GetUid());
+		NS_LOG_DEBUG("AODV_METRIC TX type=RREP dst=" << toOrigin.GetDestination() << " origin=" << toDst.GetDestination());
 		socket->SendTo(packetToDst, 0, InetSocketAddress(toDst.GetNextHop(), AODV_PORT));
 	}
 }
@@ -1765,6 +1883,7 @@ RoutingProtocol::SendReplyAck(Ipv4Address neighbor)
 	m_routingTable.LookupRoute(neighbor, toNeighbor);
 	Ptr<Socket> socket = FindSocketWithInterfaceAddress(toNeighbor.GetInterface());
 	NS_ASSERT(socket);
+	NS_LOG_DEBUG("AODV_METRIC TX type=RREP_ACK neighbor=" << neighbor);
 	socket->SendTo(packet, 0, InetSocketAddress(neighbor, AODV_PORT));
 }
 
@@ -1798,33 +1917,48 @@ RoutingProtocol::RecvReply(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address send
 	 * -  and the destination sequence number is the Destination Sequence Number in the RREP message.
 	 */
 	Ptr<NetDevice> dev = m_ipv4->GetNetDevice(m_ipv4->GetInterfaceForAddress(receiver));
-	uint8_t bestChannelToSender = 1;
-	double bestLinkEtt = GetBestEttToNeighbor(sender, bestChannelToSender);
-	if (!std::isfinite(bestLinkEtt))
+	uint8_t bestChannelToSender = static_cast<uint8_t>(m_ipv4->GetInterfaceForAddress(receiver));
+	double bestLinkEtt = 1.0;
+	if (m_useEttRouting)
 	{
-		bestLinkEtt = 1e6;
+		bestChannelToSender = 1;
+		bestLinkEtt = GetBestEttToNeighbor(sender, bestChannelToSender);
+		if (!std::isfinite(bestLinkEtt))
+		{
+			bestLinkEtt = 1e6;
+		}
 	}
-	double replyPathEtt = std::numeric_limits<double>::infinity();
-	RoutingTableEntry toOriginForEtt;
-	if (m_routingTable.LookupRoute(rrepHeader.GetOrigin(), toOriginForEtt))
+	Ipv4InterfaceAddress outIface = m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0);
+	Ipv4Address nextHopAddr = sender;
+	if (m_useEttRouting)
 	{
-		replyPathEtt = toOriginForEtt.GetPathEtt();
+		ResolveRouteOnChannel(sender, bestChannelToSender, dev, outIface, nextHopAddr);
 	}
-	if (!std::isfinite(replyPathEtt))
+	double replyPathEtt = static_cast<double>(hop);
+	if (m_useEttRouting)
 	{
-		replyPathEtt = bestLinkEtt;
-	}
-	else
-	{
-		replyPathEtt += bestLinkEtt;
+		replyPathEtt = std::numeric_limits<double>::infinity();
+		RoutingTableEntry toOriginForEtt;
+		if (m_routingTable.LookupRoute(rrepHeader.GetOrigin(), toOriginForEtt))
+		{
+			replyPathEtt = toOriginForEtt.GetPathEtt();
+		}
+		if (!std::isfinite(replyPathEtt))
+		{
+			replyPathEtt = bestLinkEtt;
+		}
+		else
+		{
+			replyPathEtt += bestLinkEtt;
+		}
 	}
 	RoutingTableEntry newEntry(/*device=*/dev,
 							   /*dst=*/dst,
 							   /*validSeqNo=*/true,
 							   /*seqno=*/rrepHeader.GetDstSeqno(),
-							   /*iface=*/m_ipv4->GetAddress(m_ipv4->GetInterfaceForAddress(receiver), 0),
+							   /*iface=*/outIface,
 							   /*hop=*/hop,
-							   /*nextHop=*/sender,
+							   /*nextHop=*/nextHopAddr,
 							   /*lifeTime=*/rrepHeader.GetLifeTime(),
 							   /*pathEtt=*/replyPathEtt,
 							   /*nextHopChannel=*/bestChannelToSender);
@@ -1853,7 +1987,8 @@ RoutingProtocol::RecvReply(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address send
 				m_routingTable.Update(newEntry);
 			}
 			// (iv) the sequence numbers are the same, and the new path ETT is smaller.
-			else if ((rrepHeader.GetDstSeqno() == toDst.GetSeqNo()) && (newEntry.GetPathEtt() < toDst.GetPathEtt()))
+			else if ((rrepHeader.GetDstSeqno() == toDst.GetSeqNo()) &&
+					 (m_useEttRouting ? (newEntry.GetPathEtt() < toDst.GetPathEtt()) : (newEntry.GetHop() < toDst.GetHop())))
 			{
 				m_routingTable.Update(newEntry);
 			}
@@ -1881,6 +2016,13 @@ RoutingProtocol::RecvReply(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address send
 			m_addressReqTimer.erase(dst);
 		}
 		m_routingTable.LookupRoute(dst, toDst);
+		NS_LOG_DEBUG("AODV_ROUTE_SELECTED mode=" << (m_useEttRouting ? "ett" : "traditional")
+						 << " src=" << rrepHeader.GetOrigin()
+						 << " dst=" << dst
+						 << " hop=" << static_cast<uint32_t>(toDst.GetHop())
+						 << " pathEtt=" << toDst.GetPathEtt()
+						 << " nextHop=" << toDst.GetNextHop()
+						 << " nextHopChannel=" << static_cast<uint32_t>(toDst.GetNextHopChannel()));
 		SendPacketFromQueue(dst, toDst.GetRoute());
 		return;
 	}
@@ -2132,6 +2274,11 @@ RoutingProtocol::SendHello()
 	{
 		Ptr<Socket> socket = j->first;
 		Ipv4InterfaceAddress iface = j->second;
+		int32_t ifaceIndex = m_ipv4->GetInterfaceForAddress(iface.GetLocal());
+		if (ifaceIndex != 1)
+		{
+			continue;
+		}
 		RrepHeader helloHeader(/*prefix size=*/0,
 							   /*hops=*/0,
 							   /*dst=*/iface.GetLocal(),
@@ -2254,6 +2401,7 @@ RoutingProtocol::SendRerrWhenNoRouteToForward(Ipv4Address dst, uint32_t dstSeqNo
 		Ptr<Socket> socket = FindSocketWithInterfaceAddress(toOrigin.GetInterface());
 		NS_ASSERT(socket);
 		NS_LOG_LOGIC("Unicast RERR to the source of the data transmission");
+		NS_LOG_DEBUG("AODV_METRIC TX type=RERR mode=unicast dst=" << dst << " origin=" << origin);
 		socket->SendTo(packet, 0, InetSocketAddress(toOrigin.GetNextHop(), AODV_PORT));
 	}
 	else
@@ -2264,8 +2412,14 @@ RoutingProtocol::SendRerrWhenNoRouteToForward(Ipv4Address dst, uint32_t dstSeqNo
 		{
 			Ptr<Socket> socket = i->first;
 			Ipv4InterfaceAddress iface = i->second;
+			int32_t ifaceIndex = m_ipv4->GetInterfaceForAddress(iface.GetLocal());
+			if (ifaceIndex != 1)
+			{
+				continue;
+			}
 			NS_ASSERT(socket);
 			NS_LOG_LOGIC("Broadcast RERR message from interface " << iface.GetLocal());
+			NS_LOG_DEBUG("AODV_METRIC TX type=RERR mode=broadcast dst=" << dst << " iface=" << iface.GetLocal());
 			// Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
 			Ipv4Address destination;
 			if (iface.GetMask() == Ipv4Mask::GetOnes())
@@ -2312,6 +2466,7 @@ RoutingProtocol::SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> pr
 			NS_ASSERT(socket);
 			NS_LOG_LOGIC("one precursor => unicast RERR to " << toPrecursor.GetDestination() << " from "
 															 << toPrecursor.GetInterface().GetLocal());
+			NS_LOG_DEBUG("AODV_METRIC TX type=RERR mode=unicast precursor=" << precursors.front());
 			Simulator::Schedule(Time(MilliSeconds(m_uniformRandomVariable->GetInteger(0, 10))),
 								&RoutingProtocol::SendTo,
 								this,
@@ -2337,9 +2492,14 @@ RoutingProtocol::SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> pr
 
 	for (std::vector<Ipv4InterfaceAddress>::const_iterator i = ifaces.begin(); i != ifaces.end(); ++i)
 	{
+		if (m_ipv4->GetInterfaceForAddress(i->GetLocal()) != 1)
+		{
+			continue;
+		}
 		Ptr<Socket> socket = FindSocketWithInterfaceAddress(*i);
 		NS_ASSERT(socket);
 		NS_LOG_LOGIC("Broadcast RERR message from interface " << i->GetLocal());
+		NS_LOG_DEBUG("AODV_METRIC TX type=RERR mode=broadcast iface=" << i->GetLocal());
 		// std::cout << "Broadcast RERR message from interface " << i->GetLocal () << std::endl;
 		// Send to all-hosts broadcast if on /32 addr, subnet-directed otherwise
 		Ptr<Packet> p = packet->Copy();

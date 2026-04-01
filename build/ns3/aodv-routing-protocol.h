@@ -44,6 +44,7 @@
 #include "ns3/grad-pc.h"
 #include "ns3/event-id.h"
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
 
@@ -232,6 +233,13 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	uint16_t m_rerrCount;
 	/// Wait time at destination after first RREQ to select lowest cumulative ETT path.
 	Time m_rreqWaitTime;
+	/// Among channels whose ETT is within this multiplier of the minimum ETT,
+	/// prefer the one with lower transmit power.
+	double m_channelSelectionEttTolerance;
+	/// Enable or disable low-power preference when multiple channels are viable.
+	bool m_preferLowPowerChannel;
+	/// If false, disable ETT/channel-aware custom routing behavior and fall back to traditional AODV logic.
+	bool m_useEttRouting;
 	/// Enable/disable intermediate-node RREP generation.
 	bool m_enableIntermediateRrep;
 
@@ -256,6 +264,12 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	Ipv4Address get_same_channel_Ipv4Address(Ipv4Address channel_addr, Ipv4Address current_ipv4);
 	/// Build key for pending destination-side delayed RREP selection.
 	std::string BuildRreqKey(Ipv4Address origin, uint32_t requestId) const;
+	/// Resolve the output device, local interface, and same-channel neighbor IP for a chosen channel.
+	bool ResolveRouteOnChannel(Ipv4Address neighbor,
+						   uint8_t channel,
+						   Ptr<NetDevice>& dev,
+						   Ipv4InterfaceAddress& iface,
+						   Ipv4Address& nextHop) const;
 	/// Resolve best data channel ETT to a specific neighbor.
 	double GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel) const;
 	/// Timer callback for delayed destination-side RREP.
@@ -369,6 +383,13 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	Ptr<UniformRandomVariable> m_uniformRandomVariable;
 	/// Keep track of the last bcast time
 	Time m_lastBcastTime;
+
+	/// Proactive route re-discovery
+	Time m_proactiveRediscoveryInterval; ///< 0 means disabled
+	Timer m_proactiveRediscoveryTimer;   ///< Fires every m_proactiveRediscoveryInterval
+	std::set<Ipv4Address> m_activeDestinations; ///< Destinations this node is actively sending to
+	/// Periodically re-issue RREQ for all active destinations to update routes with fresh ETT
+	void ProactiveRediscoveryTimerExpire();
 };
 
 } // namespace aodv

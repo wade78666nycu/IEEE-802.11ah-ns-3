@@ -725,6 +725,9 @@ def add_scratch_programs(bld):
         for filename in os.listdir("scratch"):
             if filename.startswith('.') or filename == 'CVS':
                 continue
+            # Header-only shared code directory used by scratch programs.
+            if filename == 'common-exp':
+                continue
             if os.path.isdir(os.path.join("scratch", filename)):
                 obj = bld.create_ns3_program(filename, all_modules)
                 obj.path = obj.path.find_dir('scratch').find_dir(filename)

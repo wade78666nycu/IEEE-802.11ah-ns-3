@@ -46,6 +46,9 @@ namespace aodv
 class IdCache
 {
   public:
+	/// Maximum number of times a RREQ can be re-forwarded due to metric improvement
+	static constexpr uint32_t MaxReforwardCount = 2;
+
 	/// c-tor
 	IdCache(Time lifetime)
 		: m_lifetime(lifetime)
@@ -58,8 +61,10 @@ class IdCache
 	 * Check duplicate with path metric.
 	 * If (addr, id) exists and metric is not better, returns true.
 	 * If metric is better (smaller), update cached best metric and returns false.
+	 * When unlimited=true, skip MaxReforwardCount check (used at destination to
+	 * allow the delayed RREP mechanism to see all improving candidates).
 	 */
-	bool IsDuplicate(Ipv4Address addr, uint32_t id, uint32_t metric);
+	bool IsDuplicate(Ipv4Address addr, uint32_t id, uint32_t metric, bool unlimited = false);
 	/// Remove all expired entries
 	void Purge();
 	/// Return number of entries in cache
@@ -87,6 +92,8 @@ class IdCache
 		uint32_t m_id;
 		/// Best (smallest) path metric observed for this (context, id)
 		uint32_t m_metric;
+		/// Number of times this (context, id) has been re-forwarded due to metric improvement
+		uint32_t m_reforwardCount;
 		/// When record will expire
 		Time m_expire;
 	};

@@ -41,7 +41,7 @@ IdCache::IsDuplicate(Ipv4Address addr, uint32_t id)
 }
 
 bool
-IdCache::IsDuplicate(Ipv4Address addr, uint32_t id, uint32_t metric)
+IdCache::IsDuplicate(Ipv4Address addr, uint32_t id, uint32_t metric, bool unlimited)
 {
 	Purge();
 	for (std::vector<UniqueId>::iterator i = m_idCache.begin(); i != m_idCache.end(); ++i)
@@ -51,13 +51,21 @@ IdCache::IsDuplicate(Ipv4Address addr, uint32_t id, uint32_t metric)
 			i->m_expire = m_lifetime + Simulator::Now();
 			if (metric < i->m_metric)
 			{
+				// Allow re-forward only up to MaxReforwardCount times
+				// (destination nodes pass unlimited=true to bypass this limit)
+				if (!unlimited && i->m_reforwardCount >= MaxReforwardCount)
+				{
+					return true;
+				}
 				i->m_metric = metric;
+				if (!unlimited)
+					i->m_reforwardCount++;
 				return false;
 			}
 			return true;
 		}
 	}
-	struct UniqueId uniqueId = {addr, id, metric, m_lifetime + Simulator::Now()};
+	struct UniqueId uniqueId = {addr, id, metric, 0, m_lifetime + Simulator::Now()};
 	m_idCache.push_back(uniqueId);
 	return false;
 }

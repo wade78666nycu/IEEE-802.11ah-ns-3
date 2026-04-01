@@ -1,0 +1,31 @@
+Rand Hello/Power Comparison
+===========================
+
+1. hello=on, power_control=on
+  PDR=61.76%  throughput=63768.80 bps  energy=6509.1846 J  energy/delivered=5.0186
+  delay(avg/max)=221.662/4714.800 ms  recv=1297/2100
+  aodv tx: RREQ=35 RREP=47 RERR=278 ACK=0 | rx: RREQ=38806 RREP=157 RERR=2650 ACK=0
+  mac retry: short=0 long=2192 final_rts=0 final_data=114
+  path: discoveries=35 avg_hops=3.43 avg_path_ett=73.752 next-hop-channels=ch1=15 ch2=11 ch3=9 hop-channels=ch1=59 ch2=33 ch3=28
+
+2. hello=on, power_control=off
+  PDR=64.62%  throughput=66777.38 bps  energy=6656.8198 J  energy/delivered=4.9055
+  delay(avg/max)=79.651/3471.193 ms  recv=1357/2100
+  aodv tx: RREQ=11 RREP=9 RERR=405 ACK=0 | rx: RREQ=9717 RREP=29 RERR=5576 ACK=0
+  mac retry: short=0 long=1413 final_rts=0 final_data=63
+  path: discoveries=9 avg_hops=3.44 avg_path_ett=101.930 next-hop-channels=ch1=6 ch2=1 ch3=2 hop-channels=ch1=14 ch2=11 ch3=6
+
+3. hello=off, power_control=off
+  PDR=35.48%  throughput=36413.03 bps  energy=6382.6361 J  energy/delivered=8.5673
+  delay(avg/max)=360.538/4710.595 ms  recv=745/2100
+  aodv tx: RREQ=220 RREP=4204 RERR=2810 ACK=0 | rx: RREQ=54493 RREP=18976 RERR=12459 ACK=0
+  mac retry: short=0 long=8532 final_rts=0 final_data=496
+  path: discoveries=1650 avg_hops=2.67 avg_path_ett=inf next-hop-channels=ch1=1650 ch2=0 ch3=0 hop-channels=ch1=0 ch2=0 ch3=0
+
+4. hello=on, power_control=on, prefer_low_power=on
+  PDR=59.52%  throughput=61458.68 bps  energy=5886.9369 J  energy/delivered=4.7095
+  delay(avg/max)=170.442/4171.109 ms  recv=1250/2100
+  aodv tx: RREQ=26 RREP=29 RERR=476 ACK=0 | rx: RREQ=27200 RREP=90 RERR=5616 ACK=0
+  mac retry: short=0 long=1659 final_rts=0 final_data=108
+  path: discoveries=24 avg_hops=3.04 avg_path_ett=73.735 next-hop-channels=ch1=8 ch2=4 ch3=12 hop-channels=ch1=35 ch2=17 ch3=21
+

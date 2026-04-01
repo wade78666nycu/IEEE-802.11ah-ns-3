@@ -157,6 +157,7 @@ class RoutingTableEntry
 	void SetInterface(Ipv4InterfaceAddress iface)
 	{
 		m_iface = iface;
+		m_ipv4Route->SetSource(iface.GetLocal());
 	}
 
 	void SetValidSeqNo(bool s)
