@@ -65,7 +65,12 @@ GradPCWifiManager::GetDataTxVector(Mac48Address address,
 		else
 			v.SetMode(GetNonUnicastMode());
 
-		v.SetTxPowerLevel(m_defaultTxPowerLevel);
+		// Use reduced power only for Hello beacon packets
+		HelloBeaconTag helloTag;
+		if (packet->PeekPacketTag(helloTag))
+			v.SetTxPowerLevel(GetBroadcastTxPowerLevel());
+		else
+			v.SetTxPowerLevel(m_defaultTxPowerLevel);
 		v.SetShortGuardInterval(false);
 		v.SetNss(1);
 		v.SetNess(0);

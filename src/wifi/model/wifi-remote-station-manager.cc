@@ -32,6 +32,7 @@
 #include "ns3/trace-source-accessor.h"
 #include "wifi-mac-header.h"
 #include "wifi-mac-trailer.h"
+#include "neighbor-tag.h"
 #include "s1g-capabilities.h"
 
 /***************************************************************
@@ -324,6 +325,11 @@ WifiRemoteStationManager::GetTypeId (void)
                    "implement TX power control.",
                    UintegerValue (0),
                    MakeUintegerAccessor (&WifiRemoteStationManager::m_defaultTxPowerLevel),
+                   MakeUintegerChecker<uint8_t> ())
+    .AddAttribute ("BroadcastTxPowerLevel", "Power level for broadcast/multicast frames. "
+                   "When set differently from DefaultTxPowerLevel, allows Hello beacons to use lower power.",
+                   UintegerValue (0),
+                   MakeUintegerAccessor (&WifiRemoteStationManager::m_broadcastTxPowerLevel),
                    MakeUintegerChecker<uint8_t> ())
     .AddTraceSource ("MacTxRtsFailed",
                      "The transmission of a RTS by the MAC layer has failed",
@@ -621,7 +627,12 @@ WifiRemoteStationManager::GetDataTxVector (Mac48Address address, const WifiMacHe
       {
         WifiTxVector v;
         v.SetMode (WifiPhy::GetOfdmRate300KbpsBW1MHz ());  //maybe should be 150k
-        v.SetTxPowerLevel (m_defaultTxPowerLevel);
+        // Use reduced power only for Hello beacon packets
+        HelloBeaconTag helloTag;
+        if (packet->PeekPacketTag (helloTag))
+          v.SetTxPowerLevel (m_broadcastTxPowerLevel);
+        else
+          v.SetTxPowerLevel (m_defaultTxPowerLevel);
         v.SetShortGuardInterval (false);
         v.SetNss (1);
         v.SetNess (0);
@@ -632,7 +643,12 @@ WifiRemoteStationManager::GetDataTxVector (Mac48Address address, const WifiMacHe
      {
         WifiTxVector v;
         v.SetMode (GetNonUnicastMode ());
-        v.SetTxPowerLevel (m_defaultTxPowerLevel);
+        // Use reduced power only for Hello beacon packets
+        HelloBeaconTag helloTag;
+        if (packet->PeekPacketTag (helloTag))
+          v.SetTxPowerLevel (m_broadcastTxPowerLevel);
+        else
+          v.SetTxPowerLevel (m_defaultTxPowerLevel);
         v.SetShortGuardInterval (false);
         v.SetNss (1);
         v.SetNess (0);
@@ -1278,6 +1294,18 @@ uint8_t
 WifiRemoteStationManager::GetDefaultTxPowerLevel (void) const
 {
   return m_defaultTxPowerLevel;
+}
+
+void
+WifiRemoteStationManager::SetBroadcastTxPowerLevel (uint8_t txPower)
+{
+  m_broadcastTxPowerLevel = txPower;
+}
+
+uint8_t
+WifiRemoteStationManager::GetBroadcastTxPowerLevel (void) const
+{
+  return m_broadcastTxPowerLevel;
 }
 
 WifiRemoteStationInfo

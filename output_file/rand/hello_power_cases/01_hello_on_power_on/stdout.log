@@ -1,20 +1,29 @@
 Waf: Entering directory `/home/wade/ah-lab/build'
+[1109/1485] Compiling src/applications/model/hello-beacon.cc
+[1462/1485] Linking build/libns3-dev-applications-debug.so
+[1464/1485] Linking build/libns3-dev-aodv-debug.so
+[1468/1485] Linking build/libns3-dev-dsr-debug.so
+[1470/1485] Linking build/libns3-dev-mesh-debug.so
+[1471/1485] Linking build/scratch/rand-exp/rand-exp
+[1472/1485] Linking build/utils/ns3-dev-print-introspected-doxygen-debug
+[1473/1485] Linking build/scratch/grid-exp/grid-exp
+[1474/1485] Linking build/utils/ns3-dev-test-runner-debug
 Waf: Leaving directory `/home/wade/ah-lab/build'
 Build commands will be stored in build/compile_commands.json
-'build' finished successfully (0.355s)
+'build' finished successfully (4.734s)
 Lab Start
-source node:  18 ---> destination node:  10
-source node:  26 ---> destination node:  30
-source node:  31 ---> destination node:  49
-source node:   7 ---> destination node:  38
-source node:  27 ---> destination node:  12
-source node:   4 ---> destination node:  44
-source node:   3 ---> destination node:  42
-Total received packets / Total send packet : 1392/2100
-PDR 1392/2100 = 66.29%
-Throughput: 68.37 Kbps
-Average delay: 87.485 ms
-Max delay: 3425.561 ms
+source node:  22 ---> destination node:  18
+source node:   7 ---> destination node:  11
+source node:  39 ---> destination node:  21
+source node:  14 ---> destination node:  12
+source node:  40 ---> destination node:  47
+source node:  30 ---> destination node:  41
+source node:  25 ---> destination node:  48
+Total received packets / Total send packet : 7/7
+PDR 7/7 = 100.00%
+Throughput: 4.81 Kbps
+Average delay: 680.743 ms
+Max delay: 1471.640 ms
 [rand] aodv hello=on power_control=on prefer_low_power=off ett_tol=1
 [rand] power_control=GradPC proportional
-Total Network Energy: 6006.8820 Joules
+Total Network Energy: 0.9506 Joules

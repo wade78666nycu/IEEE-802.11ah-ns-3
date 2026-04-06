@@ -4,6 +4,49 @@
 namespace ns3 {
 
 
+// ---------- HelloBeaconTag ----------
+
+HelloBeaconTag::HelloBeaconTag() {}
+
+TypeId
+HelloBeaconTag::GetTypeId()
+{
+    static TypeId tid = TypeId("ns3::HelloBeaconTag")
+                            .SetParent<Tag>()
+                            .AddConstructor<HelloBeaconTag>();
+    return tid;
+}
+
+TypeId
+HelloBeaconTag::GetInstanceTypeId() const
+{
+    return GetTypeId();
+}
+
+uint32_t
+HelloBeaconTag::GetSerializedSize() const
+{
+    return 0;
+}
+
+void
+HelloBeaconTag::Serialize(TagBuffer) const
+{
+}
+
+void
+HelloBeaconTag::Deserialize(TagBuffer)
+{
+}
+
+void
+HelloBeaconTag::Print(std::ostream& os) const
+{
+    os << "HelloBeaconTag";
+}
+
+// ---------- IsNeighborTag ----------
+
 IsNeighborTag::IsNeighborTag(): m_is_neighbor(false) {}
 IsNeighborTag::IsNeighborTag(bool is_neighbor): m_is_neighbor(is_neighbor) {}
 

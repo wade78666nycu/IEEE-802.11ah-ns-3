@@ -1,19 +1,19 @@
 Waf: Entering directory `/home/wade/ah-lab/build'
 Waf: Leaving directory `/home/wade/ah-lab/build'
 Build commands will be stored in build/compile_commands.json
-'build' finished successfully (0.354s)
+'build' finished successfully (0.351s)
 Lab Start
-source node:  18 ---> destination node:  10
-source node:  26 ---> destination node:  30
-source node:  31 ---> destination node:  49
-source node:   7 ---> destination node:  38
-source node:  27 ---> destination node:  12
-source node:   4 ---> destination node:  44
-source node:   3 ---> destination node:  42
-Total received packets / Total send packet : 1357/2100
-PDR 1357/2100 = 64.62%
-Throughput: 66.78 Kbps
-Average delay: 79.651 ms
-Max delay: 3471.193 ms
+source node:  22 ---> destination node:  18
+source node:   7 ---> destination node:  11
+source node:  39 ---> destination node:  21
+source node:  14 ---> destination node:  12
+source node:  40 ---> destination node:  47
+source node:  30 ---> destination node:  41
+source node:  25 ---> destination node:  48
+Total received packets / Total send packet : 7/7
+PDR 7/7 = 100.00%
+Throughput: 2.30 Kbps
+Average delay: 1209.106 ms
+Max delay: 4651.108 ms
 [rand] aodv hello=on power_control=off prefer_low_power=off ett_tol=1
-Total Network Energy: 6656.8198 Joules
+Total Network Energy: 1.1407 Joules

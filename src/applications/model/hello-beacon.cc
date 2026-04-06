@@ -1,45 +1,9 @@
 #include "hello-beacon.h"
+#include "ns3/neighbor-tag.h"
 #include <algorithm>
 #include <limits>
 
 using namespace ns3;
-static void
-OnHelloPhyTxTrace(Hello_beacon_App* app,
-				  uint32_t ifIndex,
-				  const Ptr<const Packet> packet,
-				  uint16_t channelFreqMhz,
-				  uint16_t channelNumber,
-				  uint32_t rate,
-				  bool isShortPreamble,
-				  WifiTxVector txvector)
-{
-	(void)packet;
-	(void)channelFreqMhz;
-	(void)channelNumber;
-	(void)rate;
-	(void)isShortPreamble;
-
-	// Keep only data-bearing traffic samples:
-	// - MAC data frames
-	// - unicast destination (exclude broadcast/multicast control/hello traffic)
-	// - reasonably large payload (exclude most control packets)
-	if (!packet)
-	{
-		return;
-	}
-	Ptr<Packet> copy = packet->Copy();
-	WifiMacHeader wifiHdr;
-	if (copy->PeekHeader(wifiHdr) == 0)
-	{
-		return;
-	}
-	if (!wifiHdr.IsData() || wifiHdr.GetAddr1().IsGroup() || packet->GetSize() < 200)
-	{
-		return;
-	}
-
-	app->update_phy_rate_sample(ifIndex, txvector);
-}
 
 NS_LOG_COMPONENT_DEFINE("HelloBeacon");
 
@@ -51,7 +15,7 @@ Hello_beacon_App::Hello_beacon_App()
 	      socket_type_id(TypeId::LookupByName("ns3::UdpSocketFactory")),
 	      m_packetSize(128),
 	      m_port(80),
-	      m_hello_interval(MilliSeconds(100.0)),
+	      m_hello_interval(MilliSeconds(80.0)),
 	      m_backoff_slot_time(MicroSeconds(100.0)),
 	      m_packet_content(""),
 	      m_data_rate("3MB/s"),
@@ -171,25 +135,6 @@ Hello_beacon_App::set_socket()
 	            continue;
 	        }
 
-	        if (ifIndex >= m_phy_trace_connected_by_if.size())
-	        {
-	            m_phy_trace_connected_by_if.resize(ifIndex + 1, false);
-	        }
-	        if (!m_phy_trace_connected_by_if[ifIndex])
-	        {
-	            Ptr<WifiNetDevice> wifiDev = DynamicCast<WifiNetDevice>(dev);
-	            if (wifiDev)
-	            {
-	                Ptr<WifiPhy> phy = wifiDev->GetPhy();
-	                if (phy)
-	                {
-	                    phy->TraceConnectWithoutContext(
-	                        "MonitorSnifferTx",
-	                        MakeBoundCallback(&OnHelloPhyTxTrace, this, ifIndex));
-	                    m_phy_trace_connected_by_if[ifIndex] = true;
-	                }
-	            }
-	        }
 
 	        // TX socket bound to this interface/device.
 	        Ptr<Socket> tx = Socket::CreateSocket(node, socket_type_id);
@@ -205,59 +150,9 @@ Hello_beacon_App::set_socket()
 	    }
 
 	    const uint32_t maxIfIndex = nIf > 0 ? (nIf - 1) : 0;
-	    m_sequence_number_by_if.assign(maxIfIndex + 1, 0);
-	    if (!m_hasRunOnce)
-	    {
-	        // First cycle: clear all neighbour data.
-	        m_neighbor_set_by_if.assign(maxIfIndex + 1, {});
-	        m_neighbor_info_by_if.assign(maxIfIndex + 1, {});
-	        m_neighbor_df_by_if.assign(maxIfIndex + 1, {});
-	        m_last_phy_rate_bps_by_if.assign(maxIfIndex + 1,
-	                                        static_cast<double>(m_data_rate.GetBitRate()));
-	    }
-	    else
-	    {
-	        // Subsequent cycles: keep existing neighbour data, only clear
-	        // per-sequence tracking so delivery ratio is computed from new
-	        // packets only (avoids mixing stale pre-GradPC measurements).
-	        for (auto& info : m_neighbor_info_by_if)
-	        {
-	            info.clear();
-	        }
-	        // Resize vectors if needed (should already be correct).
-	        if (m_neighbor_set_by_if.size() < maxIfIndex + 1)
-	            m_neighbor_set_by_if.resize(maxIfIndex + 1);
-	        if (m_neighbor_info_by_if.size() < maxIfIndex + 1)
-	            m_neighbor_info_by_if.resize(maxIfIndex + 1);
-	        if (m_neighbor_df_by_if.size() < maxIfIndex + 1)
-	            m_neighbor_df_by_if.resize(maxIfIndex + 1);
-	        if (m_last_phy_rate_bps_by_if.size() < maxIfIndex + 1)
-	            m_last_phy_rate_bps_by_if.resize(maxIfIndex + 1,
-	                                             static_cast<double>(m_data_rate.GetBitRate()));
-	    }
-	    if (m_phy_trace_connected_by_if.size() < maxIfIndex + 1)
-	    {
-	        m_phy_trace_connected_by_if.resize(maxIfIndex + 1, false);
-	    }
-}
-
-void
-Hello_beacon_App::update_phy_rate_sample(uint32_t ifIndex, const WifiTxVector& txvector)
-{
-	if (ifIndex == 0)
-	{
-		return;
-	}
-	if (ifIndex >= m_last_phy_rate_bps_by_if.size())
-	{
-		m_last_phy_rate_bps_by_if.resize(ifIndex + 1,
-		                                 static_cast<double>(m_data_rate.GetBitRate()));
-	}
-	const double bps = static_cast<double>(txvector.GetMode().GetDataRate());
-	if (bps > 0.0)
-	{
-		m_last_phy_rate_bps_by_if[ifIndex] = bps;
-	}
+	    m_neighbor_set_by_if.assign(maxIfIndex + 1, {});
+	    m_neighbor_info_by_if.assign(maxIfIndex + 1, {});
+	    m_neighbor_df_by_if.assign(maxIfIndex + 1, {});
 }
 
 std::unordered_set<uint32_t>
@@ -306,7 +201,6 @@ Hello_beacon_App::StartApplication()
 
 	    // Reset packet count
 	    m_packet_count = 0;
-	    std::fill(m_sequence_number_by_if.begin(), m_sequence_number_by_if.end(), 0);
     
     if (run_interval != 0) {
         Simulator::Schedule(run_interval, &Hello_beacon_App::StopApplication, this);
@@ -325,7 +219,6 @@ Hello_beacon_App::StopApplication()
         return; // already stopped; prevent double-scheduling a restart
     //NS_LOG_DEBUG("Hello beacon app stop");
     m_running = false;
-    m_hasRunOnce = true;
     if (m_send_event.IsRunning())
     {
         Simulator::Cancel(m_send_event);
@@ -392,14 +285,8 @@ Hello_beacon_App::create_hello_packet(uint32_t ifIndex)
 	    uint32_t node_id = node->GetId();
 	    
 	    // Build packet content:
-	    // NodeID SequenceNumber IfIndex [NeighborID:DR,...] PositionX PositionY
-	    if (ifIndex >= m_sequence_number_by_if.size())
-	    {
-	        NS_FATAL_ERROR("Invalid interface index " << ifIndex);
-	    }
-	    uint32_t seq = m_sequence_number_by_if[ifIndex];
-	    m_packet_content =
-	        std::to_string(node_id) + " " + std::to_string(seq) + " " + std::to_string(ifIndex) + " ";
+	    // NodeID IfIndex [NeighborID:DR,...] PositionX PositionY
+	    m_packet_content = std::to_string(node_id) + " " + std::to_string(ifIndex) + " ";
 	    
 	    // Serialize neighbor table with delivery ratio
 	    std::string neighbor_table_str;
@@ -444,40 +331,24 @@ Hello_beacon_App::create_hello_packet(uint32_t ifIndex)
     // check if packet_content size is too large
     const int max_data_size = 65507; // ns3::MAX_IPV4_UDP_DATAGRAM_SIZE
     NS_ASSERT_MSG(m_packet_content.length() <= max_data_size, "packet_content too large!\n");
-    
-	    // Increment sequence number for next packet
-	    m_sequence_number_by_if[ifIndex]++;
 }
 
 double
 Hello_beacon_App::CalculateDeliveryRatio(uint32_t neighbor_id, uint32_t ifIndex)
 {
-	    //.end() returns an iterator to the element following the last element,
-	    // so if find() returns .end(), it means the key was not found in the map.
 	    if (ifIndex >= m_neighbor_info_by_if.size())
 	    {
 	        return 0.0;
 	    }
 	    auto& info = m_neighbor_info_by_if[ifIndex];
-	    if (info.find(neighbor_id) == info.end()) {
+	    auto it = info.find(neighbor_id);
+	    if (it == info.end() || it->second == 0)
+	    {
 	        return 0.0;
 	    }
 
-	    const auto& seqSet = info[neighbor_id];
-	    if (seqSet.empty()) {
-	        return 0.0;
-	    }
-
-	    const uint32_t received_count = seqSet.size();
-	    // Sequence numbers start from 0 each cycle, so maxSeq + 1 approximates
-	    // the number of packets the neighbor has actually sent in this round.
-	    const uint32_t sent_count_est = (*seqSet.rbegin()) + 1;
-	    if (sent_count_est == 0) {
-	        return 0.0;
-	    }
-
-    double dr = static_cast<double>(received_count) / static_cast<double>(sent_count_est);
-    return (dr > 1.0) ? 1.0 : dr; // Cap at 1.0
+	    double dr = static_cast<double>(it->second) / static_cast<double>(m_max_packet_count);
+	    return (dr > 1.0) ? 1.0 : dr; // Cap at 1.0
 }
 
 double
@@ -511,11 +382,8 @@ Hello_beacon_App::get_ett(uint32_t neighbor_id, uint32_t ifIndex)
         return std::numeric_limits<double>::infinity();
     }
     double packet_size_bits = static_cast<double>(m_packetSize) * 8.0;
-	double bandwidth_bps = static_cast<double>(m_data_rate.GetBitRate());
-	if (ifIndex < m_last_phy_rate_bps_by_if.size() && m_last_phy_rate_bps_by_if[ifIndex] > 0.0)
-	{
-		bandwidth_bps = m_last_phy_rate_bps_by_if[ifIndex];
-	}
+	double bandwidth_bps =300.0*1024*8; // Convert from Bytes/s to bits/s
+	
     return etx * packet_size_bits / bandwidth_bps * 1000.0; // Convert to milliseconds
 }
 
@@ -538,6 +406,8 @@ Hello_beacon_App::send_packet(Ptr<Socket> txSocket, Ipv4Address destination)
 	        SocketIpTtlTag tag;
 	        tag.SetTtl(1); // set ttl to 1 to find one hop neighbors
 	        packet->AddPacketTag(tag);
+	        HelloBeaconTag helloTag;
+	        packet->AddPacketTag(helloTag);
 	        txSocket->SendTo(packet, 0, InetSocketAddress(destination, m_port));
     }
 }
@@ -569,12 +439,11 @@ Hello_beacon_App::handle_recv_packet(Ptr<Socket> socket)
 	        std::stringstream ss;
 	        ss << packet_str;
 	        uint32_t sender_node_id;
-	        uint32_t sender_seq_num;
 	        uint32_t sender_if_index = 0;
 	        std::string neighbor_table_str;
 	        float x_pos, y_pos;
 	        
-	        ss >> sender_node_id >> sender_seq_num >> sender_if_index >> neighbor_table_str >> x_pos >> y_pos;
+	        ss >> sender_node_id >> sender_if_index >> neighbor_table_str >> x_pos >> y_pos;
 	        // Prefer the sender-advertised interface index. In this experiment setup,
 	        // each interface maps to one "channel" (separate NetDevice + subnet).
 	        // PacketInfoTag recvIf values are not guaranteed to align with our indexing
@@ -603,8 +472,8 @@ Hello_beacon_App::handle_recv_packet(Ptr<Socket> socket)
 	        }
 	        m_neighbor_set_by_if[linkIfIndex].insert(sender_node_id);
 	        
-	        // Record received sequence number for delivery ratio calculation
-	        m_neighbor_info_by_if[linkIfIndex][sender_node_id].insert(sender_seq_num);
+	        // Count received hello messages for delivery ratio calculation
+	        m_neighbor_info_by_if[linkIfIndex][sender_node_id]++;
 
         // Parse the neighbour table string; each entry looks like "id:dr" and
         // entries are comma-separated.  When the entry corresponds to *this*

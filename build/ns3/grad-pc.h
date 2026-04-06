@@ -43,7 +43,8 @@ class GradPC_App : public Application
       m_reduce_default_power(false),
       m_extra_tx_distance(0.0),
       m_gradpc_log_k(5.0),
-      m_neighbor_upperbound(0){}
+      m_neighbor_upperbound(0),
+      m_hello_power_reduction_db(0.0){}
     virtual ~GradPC_App();
 
     void print_neighbor_list();
@@ -57,6 +58,7 @@ class GradPC_App : public Application
     void set_extra_tx_distance(const float extra_distance);
     void set_gradpc_log_k(const float k);
     float get_extra_tx_distance();
+    void set_hello_power_reduction(double db);
 
     // TODO: add a mutex to protect m_neighbor_list
     // Need to make sure m_neighbor_list is not being modified when calling is_neighbor function,
@@ -101,6 +103,7 @@ class GradPC_App : public Application
     bool m_reduce_default_power; // whether to change the default power on device 0 or not
     float m_extra_tx_distance; // extra distance (meters) when reducing tx power
     float m_gradpc_log_k;
+    double m_hello_power_reduction_db; // dBm reduction for Hello beacons vs data (0 = disabled)
 
     std::vector<short> m_gradPC_func_vec;
 

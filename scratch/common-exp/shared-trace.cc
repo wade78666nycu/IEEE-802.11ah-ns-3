@@ -66,8 +66,19 @@ TraceWifiTxRate(std::string context,
         return;
     }
 
+    // Extract device index from context for display (all devices share channelNumber)
+    size_t ds = context.find("/DeviceList/");
+    uint32_t devIdx = 0;
+    if (ds != std::string::npos)
+    {
+        ds += 12;
+        size_t de = context.find("/", ds);
+        if (de != std::string::npos)
+            devIdx = static_cast<uint32_t>(std::stoul(context.substr(ds, de - ds)));
+    }
+
     const double mbps = static_cast<double>(txvector.GetMode().GetDataRate()) / 1e6;
-    g_tx_rate_file << "[tx-rate] " << context << " ch=" << channelNumber
+    g_tx_rate_file << "[tx-rate] " << context << " dev=" << devIdx
                    << " mode=" << txvector.GetMode().GetUniqueName()
                    << " rate=" << std::fixed << std::setprecision(3) << mbps << "Mbps"
                    << " size=" << packet->GetSize() << "B"
@@ -148,7 +159,7 @@ TraceTxEnergy(std::string context,
     double power_watts = std::pow(10.0, (power_dbm - 30.0) / 10.0);
 
     uint32_t packet_size = packet->GetSize();
-    double data_rate_bps = static_cast<double>(rate);
+    double data_rate_bps = static_cast<double>(txvector.GetMode().GetDataRate());
     if (data_rate_bps <= 0.0)
     {
         return;
@@ -159,7 +170,7 @@ TraceTxEnergy(std::string context,
     g_node_tx_energy[node_id] += tx_energy_joules;
 
     g_tx_energy_file << std::fixed << std::setprecision(9)
-                     << "node=" << node_id << " ch=" << channelNumber
+                     << "node=" << node_id << " dev=" << dev_idx
                      << " power=" << power_dbm << "dBm"
                      << " pwr_w=" << power_watts << " pkt=" << packet_size << "B"
                      << " rate=" << (data_rate_bps / 1e6) << "Mbps"

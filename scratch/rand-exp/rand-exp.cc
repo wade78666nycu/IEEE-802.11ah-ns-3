@@ -40,7 +40,7 @@ main(int argc, char* argv[])
     ScenarioConfig cfg;
     cfg.scenario_name = "rand";
     cfg.num_nodes = 50;
-    cfg.rand_seed = 10;
+    cfg.rand_seed = 7;
 
     CommandLine cmd;
     cmd.AddValue("num_nodes", "total number of nodes", cfg.num_nodes);
@@ -52,7 +52,6 @@ main(int argc, char* argv[])
     cmd.AddValue("rx_noise_figure", "background Noise Figure", cfg.rx_noise_figure);
     cmd.AddValue("routing_method", "routing method used", cfg.routing_method);
     cmd.AddValue("export_node_info", "export node's position and power", cfg.export_node_info);
-    cmd.AddValue("hello_warmup", "warmup time (seconds) used for hello/ETT before data phase", cfg.hello_warmup_seconds);
     cmd.AddValue("enable_hello", "set true to enable hello beacon (ETX measurement)", cfg.enable_hello);
     cmd.AddValue("enable_power_control", "set false to disable tx power control (keep same power across channels)", cfg.enable_power_control);
     cmd.AddValue("prefer_low_power_channel",
@@ -63,6 +62,9 @@ main(int argc, char* argv[])
                  cfg.channel_selection_ett_tolerance);
     cmd.AddValue("reduce_default", "set to true if channel 1's power can be reduced", cfg.reduce_default_power);
     cmd.AddValue("show_log", "show log", cfg.show_log);
+    cmd.AddValue("hello_power_reduction",
+                 "dBm reduction for Hello beacons vs data power (0 = disabled)",
+                 cfg.hello_power_reduction_db);
     cmd.Parse(argc, argv);
 
     ScenarioHooks hooks;

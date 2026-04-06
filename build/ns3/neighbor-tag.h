@@ -3,6 +3,18 @@
 
 namespace ns3 {
 
+class HelloBeaconTag : public Tag
+{
+  public:
+    HelloBeaconTag();
+    static TypeId GetTypeId();
+    TypeId GetInstanceTypeId() const override;
+    uint32_t GetSerializedSize() const override;
+    void Serialize(TagBuffer i) const override;
+    void Deserialize(TagBuffer i) override;
+    void Print(std::ostream& os) const override;
+};
+
 class IsNeighborTag : public Tag
 {
   public:

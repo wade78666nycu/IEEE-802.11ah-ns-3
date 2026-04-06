@@ -601,6 +601,8 @@ public:
    * \return the default transmission power
    */
   uint8_t GetDefaultTxPowerLevel (void) const;
+  void SetBroadcastTxPowerLevel (uint8_t txPower);
+  uint8_t GetBroadcastTxPowerLevel (void) const;
   /**
    * \param address of the remote station
    *
@@ -767,6 +769,7 @@ protected:
 
 
   uint8_t m_defaultTxPowerLevel;  //!< Default tranmission power level
+  uint8_t m_broadcastTxPowerLevel; //!< Power level for broadcast/multicast frames (Hello beacons)
   /**
    * This is a pointer to the WifiPhy associated with this
    * WifiRemoteStationManager that is set on call to

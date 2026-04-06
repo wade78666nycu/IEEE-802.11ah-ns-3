@@ -2,30 +2,30 @@ Rand Hello/Power Comparison
 ===========================
 
 1. hello=on, power_control=on
-  PDR=66.29%  throughput=68372.46 bps  energy=6006.8820 J  energy/delivered=4.3153
-  delay(avg/max)=87.485/3425.561 ms  recv=1392/2100
-  aodv tx: RREQ=18 RREP=19 RERR=356 ACK=0 | rx: RREQ=19456 RREP=64 RERR=4403 ACK=0
-  mac retry: short=0 long=1920 final_rts=0 final_data=69
-  path: discoveries=17 avg_hops=3.29 avg_path_ett=111.116 next-hop-channels=ch1=10 ch2=4 ch3=3 hop-channels=ch1=28 ch2=15 ch3=13
+  PDR=100.00%  throughput=4811.42 bps  energy=0.9506 J  energy/delivered=0.1358
+  delay(avg/max)=680.743/1471.640 ms  recv=7/7
+  aodv tx: RREQ=7 RREP=7 RERR=11 ACK=0 | rx: RREQ=7607 RREP=17 RERR=11 ACK=0
+  mac retry: short=0 long=8 final_rts=0 final_data=0
+  path: discoveries=7 avg_hops=2.29 avg_path_ett=2.580 next-hop-channels=ch1=3 ch2=1 ch3=3 hop-channels=ch1=9 ch2=3 ch3=4
 
 2. hello=on, power_control=off
-  PDR=64.62%  throughput=66777.38 bps  energy=6656.8198 J  energy/delivered=4.9055
-  delay(avg/max)=79.651/3471.193 ms  recv=1357/2100
-  aodv tx: RREQ=11 RREP=9 RERR=405 ACK=0 | rx: RREQ=9717 RREP=29 RERR=5576 ACK=0
-  mac retry: short=0 long=1413 final_rts=0 final_data=63
-  path: discoveries=9 avg_hops=3.44 avg_path_ett=101.930 next-hop-channels=ch1=6 ch2=1 ch3=2 hop-channels=ch1=14 ch2=11 ch3=6
+  PDR=100.00%  throughput=2301.75 bps  energy=1.1407 J  energy/delivered=0.1630
+  delay(avg/max)=1209.106/4651.108 ms  recv=7/7
+  aodv tx: RREQ=8 RREP=8 RERR=16 ACK=0 | rx: RREQ=8630 RREP=25 RERR=14 ACK=0
+  mac retry: short=0 long=52 final_rts=0 final_data=2
+  path: discoveries=7 avg_hops=2.29 avg_path_ett=100746.044 next-hop-channels=ch1=4 ch2=2 ch3=1 hop-channels=ch1=11 ch2=3 ch3=2
 
 3. hello=off, power_control=off
-  PDR=35.48%  throughput=36413.03 bps  energy=6382.6361 J  energy/delivered=8.5673
-  delay(avg/max)=360.538/4710.595 ms  recv=745/2100
-  aodv tx: RREQ=220 RREP=4204 RERR=2810 ACK=0 | rx: RREQ=54493 RREP=18976 RERR=12459 ACK=0
-  mac retry: short=0 long=8532 final_rts=0 final_data=496
-  path: discoveries=1650 avg_hops=2.67 avg_path_ett=inf next-hop-channels=ch1=1650 ch2=0 ch3=0 hop-channels=ch1=0 ch2=0 ch3=0
+  PDR=57.14%  throughput=2711.96 bps  energy=0.7289 J  energy/delivered=0.1822
+  delay(avg/max)=1023.131/2058.433 ms  recv=4/7
+  aodv tx: RREQ=75 RREP=1179 RERR=934 ACK=0 | rx: RREQ=25117 RREP=33747 RERR=3623 ACK=0
+  mac retry: short=0 long=2949 final_rts=0 final_data=171
+  path: discoveries=643 avg_hops=2.11 avg_path_ett=inf next-hop-channels=ch1=643 ch2=0 ch3=0 hop-channels=ch1=0 ch2=0 ch3=0
 
 4. hello=on, power_control=on, prefer_low_power=on
-  PDR=57.81%  throughput=59591.93 bps  energy=5645.6272 J  energy/delivered=4.6504
-  delay(avg/max)=88.333/3770.153 ms  recv=1214/2100
-  aodv tx: RREQ=14 RREP=15 RERR=481 ACK=0 | rx: RREQ=14395 RREP=41 RERR=9261 ACK=0
-  mac retry: short=0 long=1742 final_rts=0 final_data=155
-  path: discoveries=13 avg_hops=2.85 avg_path_ett=74.880 next-hop-channels=ch1=5 ch2=2 ch3=6 hop-channels=ch1=19 ch2=7 ch3=11
+  PDR=100.00%  throughput=4822.71 bps  energy=0.9206 J  energy/delivered=0.1315
+  delay(avg/max)=485.943/1371.995 ms  recv=7/7
+  aodv tx: RREQ=4 RREP=5 RERR=3 ACK=0 | rx: RREQ=4359 RREP=24 RERR=3 ACK=0
+  mac retry: short=0 long=10 final_rts=0 final_data=0
+  path: discoveries=4 avg_hops=4.00 avg_path_ett=4.115 next-hop-channels=ch1=1 ch2=0 ch3=3 hop-channels=ch1=2 ch2=2 ch3=12
 

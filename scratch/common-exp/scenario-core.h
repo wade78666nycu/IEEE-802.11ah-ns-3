@@ -27,14 +27,13 @@ struct ScenarioConfig
 {
     unsigned int num_nodes{25};
     unsigned int device_num{3};
-    unsigned int send_packet_num{100};
+    unsigned int send_packet_num{1};
     unsigned int gradpc_type{2};
     unsigned int rx_noise_figure{7};
     int rand_seed{2};
 
     double cca_threshold{-92.0};
     double default_tx_power{15.0};
-    double hello_warmup_seconds{11.0};
     double channel_selection_ett_tolerance{1.1};
     unsigned int rreq_wait_time_ms{200};
 
@@ -45,6 +44,7 @@ struct ScenarioConfig
     bool prefer_low_power_channel{false};
     bool reduce_default_power{false};
     bool show_log{true};
+    double hello_power_reduction_db{0.0}; // dBm reduction for Hello beacons vs data (0 = disabled)
 
     std::string scenario_name{"exp"};
 };
@@ -263,18 +263,18 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
 
         if (cfg.enable_power_control)
         {
-            // Phase 1: Hello at full power (1s-4s)
-            // Phase 2: GradPC adjusts power (5s-6s)
-            // Phase 3: Hello at new power levels for ETT re-measurement (7s-10s)
-            // Data transmission starts at 11s
-            grad_pc_start_time = Seconds(5.0);
-            grad_pc_stop_time = Seconds(6.0);
-            data_phase_start_time = Seconds(11.0);
+            // Phase 1: Hello at full power (1s-9s)
+            // Phase 2: GradPC adjusts power (10s-11s)
+            // Phase 3: Hello at new power levels for ETT re-measurement (12s-20s)
+            // Data transmission starts at 21s
+            grad_pc_start_time = Seconds(10.0);
+            grad_pc_stop_time = Seconds(11.0);
+            data_phase_start_time = Seconds(21.0);
         }
         else
         {
-            // Hello warmup (1s-4s), data starts at 5s
-            data_phase_start_time = Seconds(11.0);
+            // Hello warmup (1s-9s), data starts at 10s
+            data_phase_start_time = Seconds(10.0);
         }
 
         Time hello_interval = MilliSeconds(80.0);
@@ -326,34 +326,34 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
             Ptr<Hello_beacon_App> hello_beacon_app = CreateObject<Hello_beacon_App>();
             hello_beacon_app->set_data_rate(data_rate);
             hello_beacon_app->set_hello_interval(hello_interval);
-            const unsigned int max_backoff_slot = 32;
+            const unsigned int max_backoff_slot = 64;
             const unsigned int min_backoff_slot = 0;
             hello_beacon_app->set_backoff_limit(max_backoff_slot, min_backoff_slot);
-            hello_beacon_app->set_backoff_slot_time(Time("3ms"));
-            hello_beacon_app->set_max_packet_count(10);
+            hello_beacon_app->set_backoff_slot_time(Time("10ms"));
+            hello_beacon_app->set_max_packet_count(12);
             hello_beacon_app->run_interval = Seconds(0);   // disable auto-cycling
             hello_beacon_app->wait_interval = Seconds(0);
             hello_beacon_app->SetStartTime(hello_beacon_start_time);  // 1s
             hello_beacon_app->SetStopTime(hello_beacon_stop_time);
             node->AddApplication(hello_beacon_app);
 
-            // Explicit phase scheduling: stop first warmup at 4s
-            Simulator::Schedule(Seconds(4.0), &Hello_beacon_App::StopApplication,
+            // Explicit phase scheduling: stop first warmup at 9s
+            Simulator::Schedule(Seconds(9.0), &Hello_beacon_App::StopApplication,
                                 PeekPointer(hello_beacon_app));
-            // Restart hello at 7s (after GradPC) for ETT re-measurement
-            Simulator::Schedule(Seconds(7.0), &Hello_beacon_App::StartApplication,
+            // Restart hello at 12s (after GradPC at 10s-11s) for ETT re-measurement
+            Simulator::Schedule(Seconds(12.0), &Hello_beacon_App::StartApplication,
                                 PeekPointer(hello_beacon_app));
-            Simulator::Schedule(Seconds(10.0), &Hello_beacon_App::StopApplication,
+            Simulator::Schedule(Seconds(20.0), &Hello_beacon_App::StopApplication,
                                 PeekPointer(hello_beacon_app));
 
-            // Data-phase hello cycles: 3s on, 7s off (20-23s, 30-33s, ...)
-            for (double t = 20.0; t < total_simulation_time.GetSeconds() - 1.0; t += 10.0)
+            /*// Data-phase hello cycles: 3s on, 7s off (20-23s, 30-33s, ...)
+            for (double t = 30.0; t < total_simulation_time.GetSeconds() - 1.0; t += 10.0)
             {
                 Simulator::Schedule(Seconds(t), &Hello_beacon_App::StartApplication,
                                     PeekPointer(hello_beacon_app));
                 Simulator::Schedule(Seconds(t + 3.0), &Hello_beacon_App::StopApplication,
                                     PeekPointer(hello_beacon_app));
-            }
+            }*/
 
             if (cfg.enable_power_control)
             {
@@ -363,6 +363,10 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                 if (cfg.reduce_default_power)
                 {
                     grad_pc_app->set_reduce_default_power();
+                }
+                if (cfg.hello_power_reduction_db > 0.0)
+                {
+                    grad_pc_app->set_hello_power_reduction(cfg.hello_power_reduction_db);
                 }
                 grad_pc_app->SetStartTime(grad_pc_start_time);
                 grad_pc_app->SetStopTime(grad_pc_stop_time);
@@ -376,7 +380,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                   << cfg.device_num << "\n";
     }
 
-    Time recv_pkt_start_time = cfg.enable_hello ? data_phase_start_time : Seconds(0.01);
+    Time recv_pkt_start_time = cfg.enable_hello ? data_phase_start_time : Seconds(9);
     Time recv_pkt_end_time = total_simulation_time - Seconds(1);
     Time send_pkt_end_time = total_simulation_time - Seconds(2);
     double min_send_pkt_start_time = recv_pkt_start_time.GetSeconds();

@@ -308,6 +308,12 @@ GradPC_App::get_extra_tx_distance() {
 }
 
 void
+GradPC_App::set_hello_power_reduction(double db) {
+    NS_ASSERT_MSG(db >= 0, "hello power reduction cannot be negative");
+    m_hello_power_reduction_db = db;
+}
+
+void
 GradPC_App::StartApplication()
 {
     NS_ASSERT_MSG(!m_gradPC_func_vec.empty(), "m_gradPC_func_vec is empty.");
@@ -378,10 +384,40 @@ GradPC_App::set_tx_power(float tx_power_dBm, const unsigned int device_idx)
         tx_power_dBm = maxPower;
         tx_power_valid = false; // indicate it was adjusted
     }
-    // Only reduce TxPowerStart (level 0) for data/hello frames.
-    // Keep TxPowerEnd at original max so ACK/CTS (sent at highest power level)
-    // can still reach the sender, avoiding asymmetric link failures.
-    wifi_phy->SetTxPowerStart(tx_power_dBm);
+
+    if (m_hello_power_reduction_db > 0.0)
+    {
+        // Set up multi-level power: level 0 = hello (reduced), data_level = data, N-1 = max
+        double hello_power = static_cast<double>(tx_power_dBm) - m_hello_power_reduction_db;
+        if (hello_power < min_tx_power_dBm)
+            hello_power = min_tx_power_dBm;
+
+        double effective_reduction = static_cast<double>(tx_power_dBm) - hello_power;
+        double diff = maxPower - hello_power;
+
+        // Use 0.1 dBm step resolution to find integer power levels
+        uint32_t n_minus_1 = static_cast<uint32_t>(std::round(diff * 10.0));
+        if (n_minus_1 < 2) n_minus_1 = 2;
+        uint32_t n_levels = n_minus_1 + 1;
+        uint8_t data_level = static_cast<uint8_t>(
+            std::round(effective_reduction * static_cast<double>(n_minus_1) / diff));
+
+        wifi_phy->SetTxPowerStart(hello_power);
+        wifi_phy->SetNTxPower(n_levels);
+        // TxPowerEnd stays at maxPower (for ACK/CTS at highest level)
+
+        // Set data power level on WifiRemoteStationManager so unicast data uses gradpc power
+        Ptr<WifiRemoteStationManager> mgr = wifi_device->GetRemoteStationManager();
+        mgr->SetDefaultTxPowerLevel(data_level);
+        // BroadcastTxPowerLevel stays 0 → Hello beacons use TxPowerStart (reduced)
+    }
+    else
+    {
+        // Only reduce TxPowerStart (level 0) for data/hello frames.
+        // Keep TxPowerEnd at original max so ACK/CTS (sent at highest power level)
+        // can still reach the sender, avoiding asymmetric link failures.
+        wifi_phy->SetTxPowerStart(tx_power_dBm);
+    }
     return tx_power_valid;
 }
 
