@@ -20,7 +20,7 @@ RREQ_RE = re.compile(
 )
 SELECTED_RE = re.compile(
     r"Destination delayed-reply timer fired: key=([0-9.]+)\|(\d+) "
-    r"selected cumulative ETT=([\d.]+) nextHop=([0-9.]+)(?: nextHopChannel=(\d+))?"
+    r"selected cumulative ETT=([\d.eE+\-]+) nextHop=([0-9.]+)(?: nextHopChannel=(\d+))?"
 )
 PUSH_RE = re.compile(r"\b(src_node_vec|dst_node_vec)\.emplace_back\((\d+)\)")
 INIT_RE = re.compile(r"\b(src_node_vec|dst_node_vec)\s*=\s*\{([^}]*)\}", re.S)

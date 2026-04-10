@@ -27,7 +27,7 @@ struct ScenarioConfig
 {
     unsigned int num_nodes{25};
     unsigned int device_num{3};
-    unsigned int send_packet_num{1};
+    unsigned int send_packet_num{500};
     unsigned int gradpc_type{2};
     unsigned int rx_noise_figure{7};
     int rand_seed{2};
@@ -54,6 +54,11 @@ struct ScenarioHooks
     std::function<void(NodeContainer&, const ScenarioConfig&)> setup_mobility;
     std::function<void(const ScenarioConfig&, std::vector<unsigned int>&, std::vector<unsigned int>&)>
         select_src_dst_pairs;
+    // Optional: called after IP assignment; use to install interferer applications on nodes.
+    std::function<void(NodeContainer&, const ScenarioConfig&)> setup_interferers;
+    // Optional: called after channel creation; use to install jammer nodes sharing the channel.
+    // Signature: void(NodeContainer& nodes, std::vector<Ptr<YansWifiChannel>>& channels, const ScenarioConfig&)
+    std::function<void(NodeContainer&, std::vector<Ptr<YansWifiChannel>>&, const ScenarioConfig&)> setup_jammer;
 };
 
 inline double
@@ -129,24 +134,42 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     const double ref_distance{1.0};
     const double ref_loss = calculate_refence_loss(freq, ref_distance);
 
+    std::vector<Ptr<YansWifiChannel>> channel_vec(cfg.device_num);
     for (unsigned int i = 0; i < cfg.device_num; ++i)
     {
         YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
-        Wifiphy_Setting(wifiPhy,
+        
+        /*if(i==5){
+            Wifiphy_Setting(wifiPhy,
                         freq,
                         TxPowerStart,
                         TxPowerEnd,
                         power_levels,
-                        cfg.rx_noise_figure,
+                        20,
                         cfg.cca_threshold);
-
+        }
+        else{*/
+            Wifiphy_Setting(wifiPhy,
+                            freq,
+                            TxPowerStart,
+                            TxPowerEnd,
+                            power_levels,
+                            cfg.rx_noise_figure,
+                            cfg.cca_threshold);
+        //}
         YansWifiChannelHelper wifiChannel;
         WifiChannel_Setting(wifiChannel, path_loss_exponent, ref_loss);
-        wifiPhy.SetChannel(wifiChannel.Create());
+        channel_vec[i] = wifiChannel.Create();
+        wifiPhy.SetChannel(channel_vec[i]);
 
         S1gWifiMacHelper wifiMac = S1gWifiMacHelper();
         wifiMac.SetType("ns3::AdhocWifiMac", "S1gSupported", BooleanValue(true));
         device_vec.at(i) = wifi.Install(wifiPhy, wifiMac, node_container);
+    }
+
+    if (hooks.setup_jammer)
+    {
+        hooks.setup_jammer(node_container, channel_vec, cfg);
     }
 
     std::vector<unsigned int> src_node_vec;
@@ -238,7 +261,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     NS_ASSERT_MSG(*max_element(dst_node_vec.begin(), dst_node_vec.end()) < cfg.num_nodes,
                   "invalid destination node id in dst_node_vec.");
 
-    Time total_simulation_time = Seconds(60);
+    Time total_simulation_time = Seconds(30);
     const DataRate data_rate("30Kbps");
     Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
     Time hello_beacon_start_time = Seconds(0);
@@ -346,12 +369,12 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
             Simulator::Schedule(Seconds(20.0), &Hello_beacon_App::StopApplication,
                                 PeekPointer(hello_beacon_app));
 
-            /*// Data-phase hello cycles: 3s on, 7s off (20-23s, 30-33s, ...)
-            for (double t = 30.0; t < total_simulation_time.GetSeconds() - 1.0; t += 10.0)
+            // Data-phase hello cycles: 3s on, 7s off (20-23s, 30-33s, ...)
+            /*for (double t = 30.0; t < total_simulation_time.GetSeconds() - 1.0; t += 20.0)
             {
                 Simulator::Schedule(Seconds(t), &Hello_beacon_App::StartApplication,
                                     PeekPointer(hello_beacon_app));
-                Simulator::Schedule(Seconds(t + 3.0), &Hello_beacon_App::StopApplication,
+                Simulator::Schedule(Seconds(t + 8.0), &Hello_beacon_App::StopApplication,
                                     PeekPointer(hello_beacon_app));
             }*/
 
@@ -378,6 +401,12 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     {
         std::cout << "[" << cfg.scenario_name << "] hello=off -> traditional AODV mode, devices="
                   << cfg.device_num << "\n";
+    }
+
+    // Interferer hook is called AFTER hello/GradPC apps so application indices stay fixed.
+    if (hooks.setup_interferers)
+    {
+        hooks.setup_interferers(node_container, cfg);
     }
 
     Time recv_pkt_start_time = cfg.enable_hello ? data_phase_start_time : Seconds(9);

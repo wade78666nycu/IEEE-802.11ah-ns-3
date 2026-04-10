@@ -223,7 +223,7 @@ def build_report(case_summaries: list[dict[str, object]]) -> str:
         path_metrics = summary["path_metrics"]
         energy_per_delivered = summary["energy_per_delivered_packet"]
         energy_per_delivered_text = (
-            f"{energy_per_delivered:.4f}"
+            f"{energy_per_delivered:.6f}"
             if math.isfinite(energy_per_delivered)
             else "inf"
         )

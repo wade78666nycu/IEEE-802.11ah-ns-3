@@ -243,6 +243,11 @@ public:
   virtual void SetCompressedBlockAckTimeout (Time blockAckTimeout);
   virtual Time GetCompressedBlockAckTimeout (void) const;
 
+  /**
+   * Public accessor for the DCF object (for jammer CW configuration)
+   */
+  Ptr<DcaTxop> GetDcaTxopPublic (void) const { return GetDcaTxop(); }
+
 
 protected:
   virtual void DoInitialize ();

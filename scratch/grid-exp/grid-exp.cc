@@ -8,6 +8,7 @@
 NS_LOG_COMPONENT_DEFINE("Lab");
 
 #include "../common-exp/scenario-core.h"
+#include "../common-exp/shared-interferer.h"
 
 #include <cmath>
 
@@ -43,8 +44,8 @@ set_mobility_grid(NodeContainer& node_container, const ScenarioConfig& cfg)
 static void
 select_grid_pairs(const ScenarioConfig&, std::vector<unsigned int>& src_node_vec, std::vector<unsigned int>& dst_node_vec)
 {
-    src_node_vec = {5, 6, 7,8,9};
-    dst_node_vec = {15,16,17,18,19};
+    src_node_vec = {0};
+    dst_node_vec = {24};
 }
 
 int
@@ -81,6 +82,6 @@ main(int argc, char* argv[])
     ScenarioHooks hooks;
     hooks.setup_mobility = set_mobility_grid;
     hooks.select_src_dst_pairs = select_grid_pairs;
-
+    hooks.setup_jammer = MakeMultiJammerHook(20, {0, 1, 2}); // jam all 3 channels near node 20
     return RunScenario(cfg, hooks);
 }
