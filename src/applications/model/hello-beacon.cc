@@ -377,6 +377,26 @@ Hello_beacon_App::get_etx(uint32_t neighbor_id, uint32_t ifIndex)
 double
 Hello_beacon_App::get_ett(uint32_t neighbor_id, uint32_t ifIndex)
 {
+    // Check for data-phase override first (with expiry)
+    if (ifIndex < m_ett_override_by_if.size())
+    {
+        auto it = m_ett_override_by_if[ifIndex].find(neighbor_id);
+        if (it != m_ett_override_by_if[ifIndex].end())
+        {
+            // Check if override has expired
+            auto tIt = m_ett_override_time_by_if[ifIndex].find(neighbor_id);
+            if (tIt != m_ett_override_time_by_if[ifIndex].end() &&
+                (Simulator::Now() - tIt->second).GetSeconds() < ETT_OVERRIDE_TIMEOUT_S)
+            {
+                return it->second;  // still valid
+            }
+            // Expired — remove override, fall through to hello-beacon calculation
+            m_ett_override_by_if[ifIndex].erase(it);
+            if (tIt != m_ett_override_time_by_if[ifIndex].end())
+                m_ett_override_time_by_if[ifIndex].erase(tIt);
+        }
+    }
+
     double etx = get_etx(neighbor_id, ifIndex);
     if (std::isinf(etx)) {
         return std::numeric_limits<double>::infinity();
@@ -385,6 +405,18 @@ Hello_beacon_App::get_ett(uint32_t neighbor_id, uint32_t ifIndex)
 	double bandwidth_bps =300.0*1024*8; // Convert from Bytes/s to bits/s
 	
     return etx * packet_size_bits / bandwidth_bps * 1000.0; // Convert to milliseconds
+}
+
+void
+Hello_beacon_App::set_ett(uint32_t neighbor_id, uint32_t ifIndex, double ett)
+{
+    if (ifIndex >= m_ett_override_by_if.size())
+    {
+        m_ett_override_by_if.resize(ifIndex + 1);
+        m_ett_override_time_by_if.resize(ifIndex + 1);
+    }
+    m_ett_override_by_if[ifIndex][neighbor_id] = ett;
+    m_ett_override_time_by_if[ifIndex][neighbor_id] = Simulator::Now();
 }
 
 void

@@ -10,87 +10,352 @@
 
 在Data transfer的過程當中，我的節點會開始去偵測我的PHY的參數。
 
-1.
-追蹤源使用"m_phyTxBeginTrace"：PHY 每次實際發射訊號都會觸發，包含重傳。
-這是正確的，因為 ETX = 總傳送次數 / 成功次數，重傳本來就要計入 txAttempts。
+================================================================================
+實作過程遇到的問題與解決方式
+================================================================================
+
+問題1: DoInitialize 中 m_node 為 null
+--------------------------------------
+原本在 DoInitialize() 連接 PHY trace (m_phyTxBeginTrace, m_phyRxEndTrace)，
+但 DoInitialize 被呼叫時 m_node 尚未被設定（為 null），無法取得 WifiNetDevice。
+解決：將 trace 連接移到 NotifyInterfaceUp()，
+      此時 m_node 與所有 WifiNetDevice 都已就緒。
+
+問題2: GetObject<aodv::RoutingProtocol>() 回傳 null
+----------------------------------------------------
+scenario-core.h 中要排程 ActivateDataPhase()，
+用 GetObject<aodv::RoutingProtocol>() 取得 AODV instance，但回傳 null。
+原因：AODV 被包在 Ipv4ListRouting 裡面，無法直接 GetObject 取得。
+解決：先 GetObject<Ipv4ListRouting>()，再遍歷其中的 routing protocol，
+      用 DynamicCast<aodv::RoutingProtocol> 逐一嘗試找到 AODV。
+
+問題3: txAttempts >= 5 發 RERR 導致 PDR 從 91.6% 暴跌至 6.2%
+--------------------------------------------------------------
+原始設計：txAttempts >= 5 且無法換通道 → 發 RERR。
+問題：802.11 MAC 正常重傳上限為 7 次，5 次 PHY TX 是正常的重傳行為，
+      並不代表鏈路壞掉。過度發 RERR 導致：
+      路由被殺 → RREQ 重建同一條路 → 再次 5 次 TX → 再 RERR → 惡性循環。
+      實測：8 次觸發閾值，7 次發 RERR（只 1 次成功換通道）→ PDR 6.2%。
+解決：txAttempts >= 5 只嘗試通道切換，切不了就不做任何事，不發 RERR。
+      RERR 只在真正的 MacTxFinalDataFailed（MAC 徹底放棄）才發。
+
+問題4: 獨立的 data-phase ETT 表格用於路由選擇導致 PDR 6.2%
+------------------------------------------------------------
+原始設計：有兩張 ETT 表 — hello-beacon ETT 和 data-phase ETT (m_dataEttTable)。
+         GetBestEttToNeighbor 優先使用 data-phase ETT。
+問題：data-phase ETT 只有正在通訊的鄰居/通道才有值，其他通道沒有資料 →
+      路由選擇基礎不完整，導致 RREQ/RREP 路由選擇不穩定。
+解決：移除獨立的 m_dataEttTable。ETT 只有一張表，就是 hello-beacon 的 ETT 表。
+      Data-phase 計算出的 ETT 直接覆蓋寫入 hello-beacon 的 ETT 表 (set_ett)。
+      這樣所有地方（路由選擇、通道切換）都用同一張表，資料完整且一致。
+
+最終結果：PDR 95.8%（比 baseline 91.6% 更高）
+
+問題5: rand-exp PDR 從 83.3% 跌到 76%（data-phase 導致）
+---------------------------------------------------------
+data-phase 演算法在 grid-exp 表現良好（95.8%），
+但 rand-exp（50 節點、7 條 flow、隨機拓撲）PDR 從 baseline 83.3% 跌到 76%。
+
+診斷發現三個問題：
+(a) ETX=10 懲罰寫入 hello-beacon ETT 表 → 污染路由選擇 (GetBestEttToNeighbor)
+    懲罰值在 ETT 表中存留最多 10 秒，期間 RREQ 選路避開該鏈路，
+    但鏈路可能只是暫時擁塞而非真正壞掉。
+    在 rand-exp 多流場景，FinalFail 更頻繁 → 路由選擇更不穩定。
+(b) MacTxFinalFailed 中發 RERR 與 AODV 原生的 IP 層錯誤偵測重複，
+    造成不必要的路由重建。
+(c) 通道切換無冷卻時間 → 節點在前幾秒密集切換（120 秒內 23 次切換，
+    其中 15 次在 t=22~26s），每次切換修改路由表 → 在途封包丟失。
+
+解決方式（三管齊下）：
+(a) MacTxFinalFailed 中完全移除 ETX=10 懲罰，不再寫入 hello-beacon ETT 表。
+    讓 blacklist + 通道切換機制處理壞通道，
+    讓 ACK-based EWMA 自然更新 ETT。
+(b) MacTxFinalFailed 中移除 RERR，讓 AODV 原生的 IP 層錯誤偵測自行處理。
+(c) 新增 per-neighbor 通道切換冷卻時間（CHANNEL_SWITCH_COOLDOWN_S = 2 秒），
+    同一鄰居的連續通道切換最少間隔 2 秒，避免震盪。
+
+最終結果：
+  grid-exp: 96.2%（baseline 91.6%）
+  rand-exp: 85.1%（baseline 83.3%）
+
+================================================================================
+最終演算法（實作後版本）
+================================================================================
+
+核心設計原則：
+- ETT 只有一張表：hello-beacon 的 ETT 表
+  - 初始值由 hello beacon 計算（1s~10s 階段）
+  - Data phase 開始後，由 data-phase 的測量結果覆蓋更新（EWMA）
+  - 覆蓋值有過期機制：超過 10 秒沒更新 → 自動回到 hello-beacon 原始計算值
+  - 所有地方（路由選擇、通道切換）都查同一張表
+- RERR：只在 MacTxFinalDataFailed 時發送（MAC 真正放棄時）
+- txAttempts >= 5 時：只觸發通道切換嘗試，不發 RERR，切不了就繼續傳
+- ETX=10 懲罰機制：MacTxFinalDataFailed 時寫入 ETT 表（EWMA），
+  之後如果環境恢復，正常 ACK 的 EWMA 更新會讓 ETT 降回來
+- Blacklist 過期機制：通道被 blacklist 後 5 秒自動過期，
+  讓通道有機會被重新考慮，不會永久鎖死
+
+資料結構：
+- DataPhaseCounters { uint32_t txAttempts; uint32_t txSuccess; }
+- m_dataCounters: std::map<(Mac48Address, channel), DataPhaseCounters>
+  per (鄰居MAC, 通道) 的傳輸計數器
+- Hello_beacon_App 的 ETT 表（唯一的 ETT 表）：
+  - 原本由 get_etx() 即時計算 ETT
+  - 新增 m_ett_override_by_if: 當 data-phase 呼叫 set_ett() 時，
+    覆蓋值存在這裡，get_ett() 會優先回傳覆蓋值
+  - 新增 m_ett_override_time_by_if: 記錄每筆覆蓋值的最後更新時間
+  - 過期常數 ETT_OVERRIDE_TIMEOUT_S = 10 秒
+- m_channelBlacklist: std::map<(Mac48Address, channel), Time>
+  已被標記為品質差的通道，value = 加入時間
+  - 過期常數 CHANNEL_BLACKLIST_TIMEOUT_S = 5 秒
+- m_lastSwitchTimeByNeighbor: std::map<uint32_t neighborId, Time>
+  每個鄰居最後一次通道切換的時間戳（用於冷卻檢查）
+  - 冷卻常數 CHANNEL_SWITCH_COOLDOWN_S = 2 秒
+- m_dataPhaseActive: bool
+  data phase 是否已啟動
+
+Trace 連接（在 NotifyInterfaceUp 中）：
+- 每個 WifiNetDevice 的 PHY 連接 m_phyTxBeginTrace → DataPhasePhyTxBegin
+- 每個 WifiNetDevice 的 PHY 連接 m_phyRxEndTrace → DataPhasePhyRxEnd
+- 每個 WifiNetDevice 的 RemoteStationManager 連接 MacTxFinalDataFailed → DataPhaseMacTxFinalFailed
+
+Data Phase 啟動時機：
+- scenario-core.h 中排程，在 data_phase_start_time 時呼叫 ActivateDataPhase()
+- 透過 Ipv4ListRouting 遍歷找到 AODV instance
+
+----------------------------------------------------------------------
+1. PhyTxBegin — 每次 PHY 發射訊號時觸發（含重傳）
+----------------------------------------------------------------------
+
+追蹤源 "m_phyTxBeginTrace"：PHY 每次實際發射訊號都會觸發，包含重傳。
 (例如一個封包重傳 4 次才收到 ACK，txAttempts 應加 5，txSuccess 加 1，ETX = 5)
-注意：m_TxAttempts 和 m_TxSuccess 都是 per (鄰居, 通道) 的計數器，
-      用 std::map<std::pair<Mac48Address, uint16_t>, CounterPair> 管理，
-      避免同時對多個鄰居傳資料時計數互相污染。
 
 當追蹤到 m_phyTxBeginTrace 傳送封包時：
 若封包是數據封包 且 不為廣播封包 {
 	Mac48Address neighbor = 封包目的地址;
-	uint16_t channel = 目前使用的通道;
+	uint16_t channel = 從發送端 MAC 地址反查出對應的 interface index;
 	auto key = std::make_pair(neighbor, channel);
-	m_counters[key].txAttempts++;
+	m_dataCounters[key].txAttempts++;
 
-	若 m_counters[key].txAttempts >= 6  且 尚未觸發過通道切換 {
-		(用 >= 6 而非 == 6，避免計數跳過而漏觸發)
-		若 有其他未被 blacklist 且可傳輸(ETT != INF)的通道 {
-			換到ETT較小的通道傳輸;
-			將原通道加入 blacklist，防止通道間震盪(oscillation);
-			(blacklist 在路由重建 RERR/RREQ 時才清除)
-			更新ETT表格;
-			m_counters[key].txAttempts=0;
-			m_counters[key].txSuccess=0;
-			改掉Route Table Entry的 下一跳通道 與 路徑ETT;
+	若 m_dataCounters[key].txAttempts >= 5 {
+		(用 >= 5 而非 == 5，避免計數跳過而漏觸發)
+		呼叫 TryChannelSwitch(neighbor, channel);
+		若 TryChannelSwitch 成功 {
+			// 已切換到更好的通道，計數器已在 TryChannelSwitch 內重置
 		} else {
-			// 沒有其他可用通道，直接發 RERR
-			// (繼續等只會讓封包 queue 堆積)
-			m_counters[key].txAttempts=0;
-			m_counters[key].txSuccess=0;
-			發起RERR;
+			// 沒有其他可用通道 — 不做任何事，繼續正常傳輸
+			// *** 不重置計數器、不發 RERR ***
+			// RERR 只在 MacTxFinalDataFailed 時才發
 		}
 	}
 }
-    }
 
-2.
-追蹤源”m_phyRxEndTrace”，會知道節點接收到封包。
-當追蹤到節點接收 ACK 封包時，更新對應 (鄰居, 通道) 的計數器。
+----------------------------------------------------------------------
+2. PhyRxEnd — ACK 偵測與 ETT 更新
+----------------------------------------------------------------------
+
+追蹤源 "m_phyRxEndTrace"，會知道節點接收到封包。
+
+ACK 偵測方式：802.11 ACK 封包沒有標準 header 可以直接解析，
+使用啟發式方法：找到 m_dataCounters 中同通道、txAttempts 最高的鄰居，
+視為該 ACK 對應的鄰居。
+
 若接收到封包 {
-若封包是ACK封包 且 目的節點是自身 {
-	Mac48Address neighbor = ACK來源地址;
-	uint16_t channel = 目前使用的通道;
+若封包大小符合 ACK 特徵 {
+	uint16_t channel = 從本機 MAC 地址反查出對應的 interface index;
+	Mac48Address neighbor = 同通道中 txAttempts 最高的鄰居;
 	auto key = std::make_pair(neighbor, channel);
-	m_counters[key].txSuccess++;
-	ETX = (m_counters[key].txAttempts) / (m_counters[key].txSuccess);
-	ETT_current = ETX * (Packet_Size)/(Data_Rate) ; 
-	ETT = 0.8 * ETT + 0.2 * ETT_current;  (EWMA)
-	更新ETT表格;
-	m_counters[key].txAttempts=0;
-	m_counters[key].txSuccess=0;
+	m_dataCounters[key].txSuccess++;
+
+	ETX = m_dataCounters[key].txAttempts / m_dataCounters[key].txSuccess;
+	ETT_current = ETX * (256 * 8) / (300 * 1024 * 8) * 1000;  // ms
+
+	// 從 hello-beacon 的 ETT 表讀取舊值，用 EWMA 更新後寫回
+	ETT_old = helloApp->get_ett(neighborId, channel);
+	若 ETT_old 有效 (非 INF) {
+		ETT = 0.8 * ETT_old + 0.2 * ETT_current;  // EWMA 平滑更新
+	} else {
+		ETT = ETT_current;  // 第一次測量，直接使用
+	}
+	helloApp->set_ett(neighborId, channel, ETT);  // 寫回唯一的 ETT 表
+
+	// 重置計數器，開始下一輪計數
+	m_dataCounters[key].txAttempts = 0;
+	m_dataCounters[key].txSuccess = 0;
 }
-    }
+}
 
+----------------------------------------------------------------------
+3. MacTxFinalDataFailed — MAC 徹底放棄（重傳全部失敗）
+----------------------------------------------------------------------
 
-3.
-追蹤源"MacTxFinalDataFailed"，會知道節點丟失封包(重傳七次失敗)。
+追蹤源 "MacTxFinalDataFailed"，會知道節點丟失封包（MAC 層重傳全部失敗）。
+
 若追蹤到丟失封包 {
 	Mac48Address neighbor = 失敗封包的目的地址;
-	uint16_t channel = 目前使用的通道;
-	auto key = std::make_pair(neighbor, channel);
 
-	ETX = 10;  (確保比任何正常 ETX 都大，強制觸發路由切換)
-	ETT_current = ETX * (Packet_Size)/(Data_Rate) ; 
-	ETT = 0.8 * ETT + 0.2 * ETT_current;  (EWMA)
-	更新ETT表格;
-	m_counters[key].txAttempts=0;
-	m_counters[key].txSuccess=0;
+	// *** 不寫入 ETX=10 懲罰 ***
+	// 懲罰會污染 hello-beacon ETT 表，影響路由選擇長達 10 秒。
+	// 改為讓 blacklist + 通道切換機制處理壞通道，
+	// 讓 ACK-based EWMA 自然更新 ETT。
 
-	// 清除與該 neighbor 相關的所有 blacklist，讓 RREQ 重建路由時可重新考慮所有通道。
-	清除 neighbor 相關的 blacklist entries;
+	// 重置該鄰居所有通道的計數器
+	對所有 channel: m_dataCounters[(neighbor, channel)] 重置為 0;
 
-	發起RERR。
-    }
+	// 清除該鄰居的所有 blacklist entries
+	// 讓路由重建時可以重新考慮所有通道
+	清除 m_channelBlacklist 中所有與 neighbor 相關的 entries;
 
-4.補充
-不一定要收到一個ACK就更新ETT。
-用EWMA方法更新，讓ETT更新平緩，ETT = 0.8 * ETT + 0.2 * ETT_current。
-多通道優勢
-在重傳六次時，先去看看能不能跳到其他通道傳輸。
-避免直接發起RRER導致掉很多封包。
-速率控制優勢
-當平均重傳5-6次，節點會降速，雖降速導致ETT上升，但同時傳輸變穩固，ETX下降，又會導致ETT下降。
-避免m_TxAttempt = 7 發起RERR產生大量掉包 !
+	// *** 不發 RERR ***
+	// AODV 原生的 IP 層錯誤偵測已經會處理鏈路失敗並發 RERR。
+	// 在此重複發 RERR 會造成不必要的路由重建。
+}
+
+----------------------------------------------------------------------
+4. TryChannelSwitch — 通道切換邏輯
+----------------------------------------------------------------------
+
+當 txAttempts >= 5 觸發時呼叫。
+
+TryChannelSwitch(Mac48Address neighbor, uint16_t currentChannel):
+{
+	// 冷卻檢查：若距離上次對該鄰居的通道切換不到 2 秒，不切換
+	若 m_lastSwitchTimeByNeighbor 中有 neighborId {
+		若 (現在時間 - 上次切換時間) < 2 秒 {
+			return false;  // 冷卻中
+		}
+	}
+
+	// 從 hello-beacon ETT 表中（唯一的 ETT 表，包含 data-phase 更新的值），
+	// 找到對該鄰居 ETT 最小的其他通道（排除 currentChannel 和 blacklist 中的通道）
+
+	對每個通道 ifIndex (排除 currentChannel):
+		// 檢查 blacklist（含過期判斷）
+		若 (neighbor, ifIndex) 在 m_channelBlacklist 中 {
+			若 (現在時間 - 加入時間) < 5 秒 {
+				跳過;  // 仍在 blacklist 中
+			} else {
+				移除該 entry;  // 已過期，可重新考慮
+			}
+		}
+		ETT = helloApp->get_ett(neighborId, ifIndex);
+		若 ETT < bestEtt { bestChannel = ifIndex; }
+
+	若 找到可用替代通道 {
+		// 記錄切換時間（用於冷卻檢查）
+		m_lastSwitchTimeByNeighbor[neighborId] = Simulator::Now();
+
+		// 將目前通道加入 blacklist（記錄時間戳）
+		m_channelBlacklist[(neighbor, currentChannel)] = Simulator::Now();
+
+		// 更新 Route Table：把下一跳通道改成 bestChannel
+		遍歷路由表，找到 nextHop 經過 neighbor 的 entry;
+		更新該 entry 的 interface 為 bestChannel;
+
+		// 重置計數器
+		m_dataCounters[(neighbor, currentChannel)].txAttempts = 0;
+		m_dataCounters[(neighbor, currentChannel)].txSuccess = 0;
+
+		return true;
+	}
+	return false;  // 沒有可用替代通道
+}
+
+----------------------------------------------------------------------
+5. GetBestEttToNeighbor — 路由選擇的 ETT 查詢
+----------------------------------------------------------------------
+
+GetBestEttToNeighbor(neighborIp):
+{
+	// 查詢 hello-beacon 的 ETT 表（唯一的 ETT 表）
+	// 這張表同時包含：
+	//   - hello phase 計算的初始 ETT
+	//   - data-phase ACK 更新的 EWMA ETT（超過 10 秒未更新會自動回到 hello 值）
+	// 所有資料來源統一在一張表中
+
+	對每個 interface (channel 1, 2, 3):
+		ETT = hello_beacon_app->get_ett(neighborId, ifIndex);
+
+	return min(ETT across all channels);
+}
+
+----------------------------------------------------------------------
+6. Hello_beacon_App 的 ETT 表擴充
+----------------------------------------------------------------------
+
+新增 set_ett() 方法讓 AODV data-phase 可以更新 ETT：
+
+Hello_beacon_App 新增的資料結構：
+- m_ett_override_by_if: vector<map<neighbor_id, double>>
+  當 set_ett() 被呼叫時，覆蓋值存在這裡。
+- m_ett_override_time_by_if: vector<map<neighbor_id, Time>>
+  記錄每筆覆蓋值的最後更新時間（set_ett 呼叫時間）。
+- ETT_OVERRIDE_TIMEOUT_S = 10 秒
+  覆蓋值的過期時間。
+
+get_ett(neighbor_id, ifIndex) 的行為：
+{
+	若 m_ett_override_by_if 中有 (ifIndex, neighbor_id) 的值 {
+		若 (現在時間 - 更新時間) < 10 秒 {
+			return 覆蓋值;  // data-phase 更新的 ETT，仍有效
+		} else {
+			// 覆蓋值已過期 — 移除，回到 hello-beacon 原始計算
+			移除該覆蓋值;
+		}
+	}
+	// 使用 hello-beacon 原始計算方式（從 delivery ratio 計算 ETX → ETT）
+	return ETX * packet_size / data_rate;
+}
+
+set_ett(neighbor_id, ifIndex, ett):
+{
+	m_ett_override_by_if[ifIndex][neighbor_id] = ett;
+	m_ett_override_time_by_if[ifIndex][neighbor_id] = Simulator::Now();
+}
+
+----------------------------------------------------------------------
+7. 設計總結
+----------------------------------------------------------------------
+
+ETT 表的統一管理：
+┌───────────────────────┬──────────────────────────────────────────────────┐
+│ 階段                  │ ETT 來源                                         │
+├───────────────────────┼──────────────────────────────────────────────────┤
+│ Hello phase (1s~10s)  │ hello beacon 計算 (get_etx * pktSize / rate)     │
+│ Data phase — ACK      │ data-phase EWMA 更新 → set_ett() 覆蓋寫入       │
+│ Data phase — FinalFail│ 不寫入 ETT 表（避免污染路由選擇）                │
+│ 無資料流超過 10 秒     │ 覆蓋值過期 → 自動回到 hello-beacon 原始計算      │
+└───────────────────────┴──────────────────────────────────────────────────┘
+所有查詢（路由選擇、通道切換）都透過 get_ett() → 同一張表。
+
+RERR 發送時機：
+┌─────────────────────────────┬──────────────────────────────────────────┐
+│ 事件                        │ 行為                                     │
+├─────────────────────────────┼──────────────────────────────────────────┤
+│ txAttempts >= 5, 可換通道    │ 換通道（受 2s 冷卻限制），不發 RERR       │
+│ txAttempts >= 5, 無法換通道  │ 不做任何事，繼續傳（不重置計數器）        │
+│ MacTxFinalDataFailed         │ 清 blacklist，不發 RERR（AODV 原生處理） │
+└─────────────────────────────┴──────────────────────────────────────────┘
+
+過期機制：
+┌────────────────────────┬──────────┬────────────────────────────────────┐
+│ 項目                   │ 過期時間 │ 過期後行為                          │
+├────────────────────────┼──────────┼────────────────────────────────────┤
+│ ETT 覆蓋值 (set_ett)   │ 10 秒    │ 移除覆蓋值，回到 hello-beacon 計算  │
+│ Channel Blacklist       │ 5 秒     │ 移除 blacklist，通道可被重新考慮    │
+│ Channel Switch Cooldown │ 2 秒     │ 允許對該鄰居再次切換通道            │
+└────────────────────────┴──────────┴────────────────────────────────────┘
+
+多通道優勢：
+- 當某通道品質變差（txAttempts 累積到 5），自動切到更好的通道。
+- Blacklist 防止通道間來回震盪，5 秒後自動過期讓通道有機會被重新評估。
+- 冷卻機制（2 秒）防止對同一鄰居頻繁切換通道，減少路由表變動。
+- ETT 持續被 data-phase ACK 更新，能偵測到環境變化。
+- 無資料流時，ETT 覆蓋值自動過期，回到 hello-beacon 原始值，避免凍結。
+- MacTxFinalFailed 只清 blacklist（讓路由重建考慮所有通道），
+  不寫入懲罰 ETT（避免污染路由選擇），不發 RERR（避免重複）。
+
+速率控制協同：
+- 當平均重傳次數增加，GradPC 會降低傳輸功率/速率。
+- 降速導致 ETT 上升，但傳輸更穩固 → ETX 下降 → ETT 又會趨於穩定。
+- 避免過度發 RERR，讓速率控制有時間生效。

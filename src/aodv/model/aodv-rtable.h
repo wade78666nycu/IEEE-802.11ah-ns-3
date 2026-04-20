@@ -382,6 +382,12 @@ class RoutingTable
 	/// Delete all route from interface with address iface
 	void DeleteAllRoutesFromInterface(Ipv4InterfaceAddress iface);
 
+	/// Get a snapshot of all routes (destination -> entry).
+	void GetListOfAllRoutes(std::map<Ipv4Address, RoutingTableEntry>& routes) const
+	{
+		routes = m_ipv4AddressEntry;
+	}
+
 	/// Delete all entries from routing table
 	void Clear()
 	{

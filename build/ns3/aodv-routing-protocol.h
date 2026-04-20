@@ -43,15 +43,39 @@
 
 #include "ns3/grad-pc.h"
 #include "ns3/event-id.h"
+#include "ns3/mac48-address.h"
 #include <map>
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 namespace ns3
 {
 namespace aodv
 {
+
+/// Per-(neighbor, channel) transmission counters for data-phase ETT calculation.
+struct DataPhaseCounters
+{
+	uint32_t txAttempts{0};
+	uint32_t txSuccess{0};
+};
+
+/// Key type for per-(neighbor MAC, channel) counters.
+typedef std::pair<Mac48Address, uint16_t> NeighborChannelKey;
+
+/// Comparator so NeighborChannelKey can be used in std::map.
+struct NeighborChannelKeyCmp
+{
+	bool operator()(const NeighborChannelKey& a, const NeighborChannelKey& b) const
+	{
+		if (a.first < b.first) return true;
+		if (b.first < a.first) return false;
+		return a.second < b.second;
+	}
+};
+
 /**
  * \ingroup aodv
  *
@@ -144,6 +168,29 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 
 	/// wraper to print routing table to standard output
 	void print_routing_table();
+
+	// ---- Data-phase ETT trace callbacks (connected externally) ----
+
+	/// Called on every PHY TX begin (includes MAC retransmissions).
+	/// Section 1: increments per-(neighbor,channel) txAttempts; triggers channel switch at >= 5.
+	void DataPhasePhyTxBegin(std::string context, Ptr<const Packet> packet);
+
+	/// Called on every PHY RX end.
+	/// Section 2: if ACK for us, compute ETX/ETT via EWMA and update data-phase ETT table.
+	void DataPhasePhyRxEnd(std::string context, Ptr<const Packet> packet);
+
+	/// Called when MAC gives up after max retransmissions.
+	/// Section 3: set ETX=10 penalty, update ETT, clear blacklist for neighbor, send RERR.
+	void DataPhaseMacTxFinalFailed(std::string context, Mac48Address address);
+
+	/// Get the data-phase ETT for a given neighbor/channel.  Returns INF if not yet measured.
+	double GetDataPhaseEtt(uint32_t neighborId, uint32_t ifIndex) const;
+
+	/// Return true if data-phase ETT measurement is active (i.e. hello phase is over).
+	bool IsDataPhaseActive() const { return m_dataPhaseActive; }
+
+	/// Activate data-phase ETT measurement (call when data transfer starts).
+	void ActivateDataPhase();
 
 	/**
 	 * Assign a fixed random variable stream number to the random variables
@@ -390,6 +437,47 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	std::set<Ipv4Address> m_activeDestinations; ///< Destinations this node is actively sending to
 	/// Periodically re-issue RREQ for all active destinations to update routes with fresh ETT
 	void ProactiveRediscoveryTimerExpire();
+
+	// ---- Data-phase ETT measurement state ----
+
+	/// Whether data-phase ETT measurement is active (set true when data transfer starts).
+	bool m_dataPhaseActive{false};
+
+	/// Per-(neighbor MAC, channel) transmission counters.
+	std::map<NeighborChannelKey, DataPhaseCounters, NeighborChannelKeyCmp> m_dataCounters;
+
+	/// Blacklisted (neighbor MAC, channel) pairs — prevents oscillation after channel switch.
+	/// Value is the time the entry was added.  Entries expire after ChannelBlacklistTimeout.
+	/// Also cleared when RERR/RREQ triggers route rebuild.
+	std::map<NeighborChannelKey, Time, NeighborChannelKeyCmp> m_channelBlacklist;
+
+	/// How long a channel stays blacklisted before it can be reconsidered.
+	static const double CHANNEL_BLACKLIST_TIMEOUT_S;
+
+	/// Per-neighbor last channel-switch timestamp — enforces cooldown between switches.
+	std::map<uint32_t, Time> m_lastSwitchTimeByNeighbor;
+
+	/// Minimum interval between channel switches for the same neighbor.
+	static const double CHANNEL_SWITCH_COOLDOWN_S;
+
+
+	/// Helper: resolve MAC address to neighbor node ID.  Returns false if not found.
+	bool ResolveMacToNodeId(Mac48Address mac, uint32_t& nodeId) const;
+
+	/// Helper: resolve MAC address to an Ipv4Address on any interface. Returns Ipv4Address() if not found.
+	Ipv4Address ResolveMacToIpv4(Mac48Address mac) const;
+
+	/// Helper: get the channel (interface index) from a PHY trace context string.
+	uint16_t GetChannelFromContext(const std::string& context) const;
+
+	/// Internal without-context callback wrappers (connected in DoInitialize).
+	void DataPhasePhyTxBeginLocal(Ptr<const Packet> packet);
+	void DataPhasePhyRxEndLocal(Ptr<const Packet> packet);
+	void DataPhaseMacTxFinalFailedLocal(Mac48Address address);
+
+	/// Attempt to switch to a better channel for the given neighbor MAC.
+	/// Returns true if switch was performed.
+	bool TryChannelSwitch(Mac48Address neighborMac, uint16_t currentChannel);
 };
 
 } // namespace aodv

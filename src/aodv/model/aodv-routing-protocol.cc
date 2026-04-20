@@ -45,6 +45,7 @@
 #include "ns3/trace-source-accessor.h"
 #include "ns3/udp-socket-factory.h"
 #include "ns3/wifi-net-device.h"
+#include "ns3/wifi-mac-header.h"
 
 #include <algorithm>
 #include <cmath>
@@ -136,6 +137,13 @@ class DeferredRouteOutputTag : public Tag
 };
 
 NS_OBJECT_ENSURE_REGISTERED(DeferredRouteOutputTag);
+
+// Channel blacklist timeout: how long a channel stays blacklisted (seconds).
+// Uses same order of magnitude as AODV BlackListTimeout (5.6s).
+const double RoutingProtocol::CHANNEL_BLACKLIST_TIMEOUT_S = 5.0;
+
+// Minimum interval between channel switches for the same neighbor (seconds).
+const double RoutingProtocol::CHANNEL_SWITCH_COOLDOWN_S = 2.0;
 
 //-----------------------------------------------------------------------------
 RoutingProtocol::RoutingProtocol()
@@ -479,27 +487,30 @@ RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel
 		return std::numeric_limits<double>::infinity();
 	}
 
-	Ptr<Hello_beacon_App> helloApp = nullptr;
-	for (uint32_t appIdx = 0; appIdx < m_node->GetNApplications(); ++appIdx)
-	{
-		helloApp = DynamicCast<Hello_beacon_App>(m_node->GetApplication(appIdx));
-		if (helloApp)
-		{
-			break;
-		}
-	}
-
-	if (!helloApp)
-	{
-		return std::numeric_limits<double>::infinity();
-	}
-
 	const uint32_t neighborId = static_cast<uint32_t>(it->second);
 	const uint32_t ifaceCount = m_node->GetNDevices() > 0 ? (m_node->GetNDevices() - 1) : 0;
+
+	// Helper lambda: get ETT for (neighborId, ifIndex).
+	// Always use hello-beacon ETT for route selection (RREQ/RREP).
+	// Data-phase ETT is only used internally for channel-switch decisions (TryChannelSwitch).
+	// Reason: data-phase ETT is incomplete (only active links have data) and fluctuates
+	// with EWMA, causing route instability when mixed with hello-beacon values.
+	auto getEtt = [&](uint32_t ifIndex) -> double {
+		Ptr<Hello_beacon_App> helloApp = nullptr;
+		for (uint32_t appIdx = 0; appIdx < m_node->GetNApplications(); ++appIdx)
+		{
+			helloApp = DynamicCast<Hello_beacon_App>(m_node->GetApplication(appIdx));
+			if (helloApp) break;
+		}
+		if (helloApp)
+			return helloApp->get_ett(neighborId, ifIndex);
+		return std::numeric_limits<double>::infinity();
+	};
+
 	double minEtt = std::numeric_limits<double>::infinity();
 	for (uint32_t ifIndex = 1; ifIndex <= ifaceCount; ++ifIndex)
 	{
-		double ett = helloApp->get_ett(neighborId, ifIndex);
+		double ett = getEtt(ifIndex);
 		if (!std::isfinite(ett))
 		{
 			continue;
@@ -519,7 +530,7 @@ RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel
 	{
 		for (uint32_t ifIndex = 1; ifIndex <= ifaceCount; ++ifIndex)
 		{
-			double ett = helloApp->get_ett(neighborId, ifIndex);
+			double ett = getEtt(ifIndex);
 			if (!std::isfinite(ett))
 			{
 				continue;
@@ -538,7 +549,7 @@ RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel
 	const double ettThreshold = minEtt * m_channelSelectionEttTolerance;
 	for (uint32_t ifIndex = ifaceCount; ifIndex >= 1; --ifIndex)
 	{
-		double ett = helloApp->get_ett(neighborId, ifIndex);
+		double ett = getEtt(ifIndex);
 		if (!std::isfinite(ett) || ett > ettThreshold)
 		{
 			continue;
@@ -1009,6 +1020,22 @@ RoutingProtocol::NotifyInterfaceUp(uint32_t i)
 		return;
 
 	mac->TraceConnectWithoutContext("TxErrHeader", m_nb.GetTxErrorCallback());
+
+	// Connect PHY-level traces for data-phase ETT measurement
+	Ptr<WifiPhy> phy = wifi->GetPhy();
+	if (phy)
+	{
+		phy->TraceConnectWithoutContext("PhyTxBegin",
+			MakeCallback(&RoutingProtocol::DataPhasePhyTxBeginLocal, this));
+		phy->TraceConnectWithoutContext("PhyRxEnd",
+			MakeCallback(&RoutingProtocol::DataPhasePhyRxEndLocal, this));
+	}
+	Ptr<WifiRemoteStationManager> stationMgr = wifi->GetRemoteStationManager();
+	if (stationMgr)
+	{
+		stationMgr->TraceConnectWithoutContext("MacTxFinalDataFailed",
+			MakeCallback(&RoutingProtocol::DataPhaseMacTxFinalFailedLocal, this));
+	}
 }
 
 void
@@ -2575,6 +2602,438 @@ RoutingProtocol::ProactiveRediscoveryTimerExpire()
 		const Time intervalJitter = Seconds(m_uniformRandomVariable->GetValue(0.0, intervalJitterMaxSec));
 		m_proactiveRediscoveryTimer.Schedule(m_proactiveRediscoveryInterval + intervalJitter);
 	}
+}
+
+// ==========================================================================
+// Data-phase ETT measurement (Sections 1, 2, 3 of the algorithm)
+// ==========================================================================
+
+uint16_t
+RoutingProtocol::GetChannelFromContext(const std::string& context) const
+{
+	(void)context;
+	return 0;
+}
+
+bool
+RoutingProtocol::ResolveMacToNodeId(Mac48Address mac, uint32_t& nodeId) const
+{
+	for (uint32_t n = 0; n < NodeList::GetNNodes(); ++n)
+	{
+		Ptr<Node> node = NodeList::GetNode(n);
+		for (uint32_t d = 0; d < node->GetNDevices(); ++d)
+		{
+			Ptr<WifiNetDevice> wifiDev = DynamicCast<WifiNetDevice>(node->GetDevice(d));
+			if (wifiDev && wifiDev->GetMac()->GetAddress() == mac)
+			{
+				nodeId = node->GetId();
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+Ipv4Address
+RoutingProtocol::ResolveMacToIpv4(Mac48Address mac) const
+{
+	for (uint32_t n = 0; n < NodeList::GetNNodes(); ++n)
+	{
+		Ptr<Node> node = NodeList::GetNode(n);
+		for (uint32_t d = 0; d < node->GetNDevices(); ++d)
+		{
+			Ptr<WifiNetDevice> wifiDev = DynamicCast<WifiNetDevice>(node->GetDevice(d));
+			if (wifiDev && wifiDev->GetMac()->GetAddress() == mac)
+			{
+				Ptr<Ipv4> ipv4 = node->GetObject<Ipv4>();
+				if (ipv4)
+				{
+					for (uint32_t i = 1; i < ipv4->GetNInterfaces(); ++i)
+					{
+						if (ipv4->GetNAddresses(i) > 0)
+							return ipv4->GetAddress(i, 0).GetLocal();
+					}
+				}
+			}
+		}
+	}
+	return Ipv4Address();
+}
+
+double
+RoutingProtocol::GetDataPhaseEtt(uint32_t neighborId, uint32_t ifIndex) const
+{
+	// ETT is now stored in hello-beacon's override table; query it directly.
+	if (!m_node)
+		return std::numeric_limits<double>::infinity();
+	Ptr<Hello_beacon_App> helloApp = nullptr;
+	for (uint32_t appIdx = 0; appIdx < m_node->GetNApplications(); ++appIdx)
+	{
+		helloApp = DynamicCast<Hello_beacon_App>(m_node->GetApplication(appIdx));
+		if (helloApp) break;
+	}
+	if (helloApp)
+		return helloApp->get_ett(neighborId, ifIndex);
+	return std::numeric_limits<double>::infinity();
+}
+
+void
+RoutingProtocol::DataPhasePhyTxBeginLocal(Ptr<const Packet> packet)
+{
+	DataPhasePhyTxBegin("", packet);
+}
+
+void
+RoutingProtocol::DataPhasePhyRxEndLocal(Ptr<const Packet> packet)
+{
+	DataPhasePhyRxEnd("", packet);
+}
+
+void
+RoutingProtocol::DataPhaseMacTxFinalFailedLocal(Mac48Address address)
+{
+	DataPhaseMacTxFinalFailed("", address);
+}
+
+// ----- Section 1: PHY TX Begin -----
+void
+RoutingProtocol::DataPhasePhyTxBegin(std::string context, Ptr<const Packet> packet)
+{
+	if (!m_dataPhaseActive || !m_node)
+		return;
+
+	Ptr<Packet> copy = packet->Copy();
+	WifiMacHeader hdr;
+	if (!copy->PeekHeader(hdr))
+		return;
+
+	if (!hdr.IsData() || hdr.GetAddr1().IsBroadcast() || hdr.GetAddr1().IsGroup())
+		return;
+
+	Mac48Address neighborMac = hdr.GetAddr1();
+
+	// Determine which channel/device this TX is on
+	uint16_t channel = 0;
+	Mac48Address srcMac = hdr.GetAddr2();
+	for (uint32_t d = 0; d < m_node->GetNDevices(); ++d)
+	{
+		Ptr<WifiNetDevice> wifiDev = DynamicCast<WifiNetDevice>(m_node->GetDevice(d));
+		if (wifiDev && wifiDev->GetMac()->GetAddress() == srcMac)
+		{
+			channel = static_cast<uint16_t>(m_ipv4->GetInterfaceForDevice(wifiDev));
+			break;
+		}
+	}
+	if (channel == 0)
+		return;
+
+	NeighborChannelKey key(neighborMac, channel);
+	m_dataCounters[key].txAttempts++;
+
+	NS_LOG_DEBUG("DataPhase-TxBegin node=" << m_node->GetId()
+		<< " neighbor=" << neighborMac << " ch=" << channel
+		<< " txAttempts=" << m_dataCounters[key].txAttempts);
+
+	static const uint32_t TX_ATTEMPT_THRESHOLD = 5;
+	if (m_dataCounters[key].txAttempts >= TX_ATTEMPT_THRESHOLD)
+	{
+		if (!TryChannelSwitch(neighborMac, channel))
+		{
+			// No alternate channel available — do nothing, continue normal transmission.
+			// Do NOT reset counters and do NOT send RERR.
+			// RERR is only sent on actual MacTxFinalDataFailed.
+			NS_LOG_DEBUG("DataPhase: No alt channel for neighbor=" << neighborMac << ", continuing");
+		}
+	}
+}
+
+// ----- Section 2: PHY RX End (ACK detection) -----
+void
+RoutingProtocol::DataPhasePhyRxEnd(std::string context, Ptr<const Packet> packet)
+{
+	if (!m_dataPhaseActive || !m_node)
+		return;
+
+	Ptr<Packet> copy = packet->Copy();
+	WifiMacHeader hdr;
+	if (!copy->PeekHeader(hdr))
+		return;
+
+	if (!hdr.IsAck())
+		return;
+
+	Mac48Address ackDst = hdr.GetAddr1();
+	uint16_t channel = 0;
+	bool isForUs = false;
+	for (uint32_t d = 0; d < m_node->GetNDevices(); ++d)
+	{
+		Ptr<WifiNetDevice> wifiDev = DynamicCast<WifiNetDevice>(m_node->GetDevice(d));
+		if (wifiDev && wifiDev->GetMac()->GetAddress() == ackDst)
+		{
+			channel = static_cast<uint16_t>(m_ipv4->GetInterfaceForDevice(wifiDev));
+			isForUs = true;
+			break;
+		}
+	}
+	if (!isForUs || channel == 0)
+		return;
+
+	// ACK frames only have Addr1 — find which neighbor by looking at active counters on this channel
+	Mac48Address neighborMac;
+	bool found = false;
+	uint32_t maxAttempts = 0;
+	for (auto& kv : m_dataCounters)
+	{
+		if (kv.first.second == channel && kv.second.txAttempts > 0)
+		{
+			if (kv.second.txAttempts > maxAttempts)
+			{
+				maxAttempts = kv.second.txAttempts;
+				neighborMac = kv.first.first;
+				found = true;
+			}
+		}
+	}
+	if (!found)
+		return;
+
+	NeighborChannelKey key(neighborMac, channel);
+	auto& counters = m_dataCounters[key];
+	counters.txSuccess++;
+
+	if (counters.txSuccess == 0)
+		return;
+
+	double etx = static_cast<double>(counters.txAttempts) / static_cast<double>(counters.txSuccess);
+
+	const double packet_size_bits = 256.0 * 8.0;
+	const double bandwidth_bps = 300.0 * 1024.0 * 8.0;
+	double ett_current = etx * packet_size_bits / bandwidth_bps * 1000.0;
+
+	uint32_t neighborId = 0;
+	if (!ResolveMacToNodeId(neighborMac, neighborId))
+		return;
+
+	// Write ETT to the hello-beacon ETT table (single ETT table)
+	Ptr<Hello_beacon_App> helloApp = nullptr;
+	for (uint32_t appIdx = 0; appIdx < m_node->GetNApplications(); ++appIdx)
+	{
+		helloApp = DynamicCast<Hello_beacon_App>(m_node->GetApplication(appIdx));
+		if (helloApp) break;
+	}
+	if (!helloApp)
+		return;
+
+	double oldEtt = helloApp->get_ett(neighborId, static_cast<uint32_t>(channel));
+	double newEtt;
+	if (std::isfinite(oldEtt))
+		newEtt = 0.8 * oldEtt + 0.2 * ett_current;  // EWMA
+	else
+		newEtt = ett_current;  // first measurement
+	helloApp->set_ett(neighborId, static_cast<uint32_t>(channel), newEtt);
+
+	NS_LOG_DEBUG("DataPhase-RxACK node=" << m_node->GetId()
+		<< " neighbor=" << neighborMac << "(id=" << neighborId << ") ch=" << channel
+		<< " ETX=" << etx << " ETT_cur=" << ett_current
+		<< " ETT_ewma=" << newEtt);
+
+	counters.txAttempts = 0;
+	counters.txSuccess = 0;
+}
+
+// ----- Section 3: MacTxFinalDataFailed -----
+void
+RoutingProtocol::DataPhaseMacTxFinalFailed(std::string context, Mac48Address address)
+{
+	if (!m_dataPhaseActive || !m_node)
+		return;
+
+	uint16_t channel = 0;
+	for (auto& kv : m_dataCounters)
+	{
+		if (kv.first.first == address && kv.second.txAttempts > 0)
+		{
+			channel = kv.first.second;
+			break;
+		}
+	}
+	if (channel == 0)
+	{
+		for (uint32_t d = 0; d < m_node->GetNDevices(); ++d)
+		{
+			Ptr<WifiNetDevice> wifiDev = DynamicCast<WifiNetDevice>(m_node->GetDevice(d));
+			if (wifiDev)
+			{
+				channel = static_cast<uint16_t>(m_ipv4->GetInterfaceForDevice(wifiDev));
+				if (channel > 0)
+					break;
+			}
+		}
+	}
+	if (channel == 0)
+		return;
+
+	NeighborChannelKey key(address, channel);
+
+	// Do NOT write ETX=10 penalty to hello-beacon ETT table.
+	// Penalty pollutes route selection (GetBestEttToNeighbor) for up to 10s,
+	// causing suboptimal paths.  Instead, let the blacklist + channel switch
+	// mechanism handle bad channels, and let ACK-based EWMA naturally recover.
+
+	NS_LOG_DEBUG("DataPhase-FinalFail node=" << m_node->GetId()
+		<< " neighbor=" << address << " ch=" << channel);
+
+	m_dataCounters[key].txAttempts = 0;
+	m_dataCounters[key].txSuccess = 0;
+
+	// Clear blacklist for this neighbor (all channels) so route rebuild can use any channel.
+	for (auto it = m_channelBlacklist.begin(); it != m_channelBlacklist.end(); )
+	{
+		if (it->first.first == address)
+			it = m_channelBlacklist.erase(it);
+		else
+			++it;
+	}
+
+	// Do NOT send RERR here — the standard AODV route-error mechanism already
+	// detects link failures at the IP layer and sends RERR.  Sending a duplicate
+	// RERR causes unnecessary route churn.
+}
+
+// ----- Channel switch logic -----
+bool
+RoutingProtocol::TryChannelSwitch(Mac48Address neighborMac, uint16_t currentChannel)
+{
+	if (!m_node || !m_ipv4)
+		return false;
+
+	uint32_t neighborId = 0;
+	if (!ResolveMacToNodeId(neighborMac, neighborId))
+		return false;
+
+	// Cooldown: prevent rapid channel switching for the same neighbor
+	auto cooldownIt = m_lastSwitchTimeByNeighbor.find(neighborId);
+	if (cooldownIt != m_lastSwitchTimeByNeighbor.end())
+	{
+		if ((Simulator::Now() - cooldownIt->second).GetSeconds() < CHANNEL_SWITCH_COOLDOWN_S)
+		{
+			NS_LOG_DEBUG("DataPhase-TryChannelSwitch: cooldown active for neighbor=" << neighborId);
+			return false;
+		}
+	}
+
+	const uint32_t ifaceCount = m_node->GetNDevices() > 0 ? (m_node->GetNDevices() - 1) : 0;
+
+	double bestEtt = std::numeric_limits<double>::infinity();
+	uint16_t bestChannel = 0;
+
+	for (uint32_t ifIndex = 1; ifIndex <= ifaceCount; ++ifIndex)
+	{
+		if (static_cast<uint16_t>(ifIndex) == currentChannel)
+			continue;
+
+		NeighborChannelKey candidateKey(neighborMac, static_cast<uint16_t>(ifIndex));
+		// Check blacklist with expiry
+		auto blIt = m_channelBlacklist.find(candidateKey);
+		if (blIt != m_channelBlacklist.end())
+		{
+			if ((Simulator::Now() - blIt->second).GetSeconds() < CHANNEL_BLACKLIST_TIMEOUT_S)
+				continue;  // still blacklisted
+			else
+				m_channelBlacklist.erase(blIt);  // expired, remove
+		}
+
+		// Use hello-beacon ETT (single ETT table — includes data-phase overrides)
+		double ett = std::numeric_limits<double>::infinity();
+		Ptr<Hello_beacon_App> helloApp = nullptr;
+		for (uint32_t appIdx = 0; appIdx < m_node->GetNApplications(); ++appIdx)
+		{
+			helloApp = DynamicCast<Hello_beacon_App>(m_node->GetApplication(appIdx));
+			if (helloApp) break;
+		}
+		if (helloApp)
+		{
+			ett = helloApp->get_ett(neighborId, ifIndex);
+		}
+
+		if (!std::isfinite(ett))
+			continue;
+
+		if (ett < bestEtt)
+		{
+			bestEtt = ett;
+			bestChannel = static_cast<uint16_t>(ifIndex);
+		}
+	}
+
+	if (bestChannel == 0)
+		return false;
+
+	NS_LOG_DEBUG("DataPhase-ChannelSwitch node=" << m_node->GetId()
+		<< " neighbor=" << neighborMac << "(id=" << neighborId << ")"
+		<< " from ch=" << currentChannel << " to ch=" << bestChannel
+		<< " bestEtt=" << bestEtt);
+
+	// Record switch time for cooldown enforcement
+	m_lastSwitchTimeByNeighbor[neighborId] = Simulator::Now();
+
+	// Blacklist old channel (with timestamp for expiry)
+	NeighborChannelKey oldKey(neighborMac, currentChannel);
+	m_channelBlacklist[oldKey] = Simulator::Now();
+
+	// Reset counters for old channel
+	m_dataCounters[oldKey].txAttempts = 0;
+	m_dataCounters[oldKey].txSuccess = 0;
+
+	// Update routing table
+	Ipv4Address neighborIp = ResolveMacToIpv4(neighborMac);
+	if (neighborIp == Ipv4Address())
+		return false;
+
+	Ptr<NetDevice> newDev;
+	Ipv4InterfaceAddress newIface;
+	Ipv4Address newNextHop;
+	if (!ResolveRouteOnChannel(neighborIp, static_cast<uint8_t>(bestChannel), newDev, newIface, newNextHop))
+		return false;
+
+	// Walk routing table and update entries whose next hop is this neighbor
+	std::map<Ipv4Address, RoutingTableEntry> allRoutes;
+	m_routingTable.GetListOfAllRoutes(allRoutes);
+	for (auto& kv : allRoutes)
+	{
+		RoutingTableEntry rt;
+		if (!m_routingTable.LookupRoute(kv.first, rt))
+			continue;
+
+		uint32_t nextHopNodeId = 0;
+		auto it = ip_to_id_map.find(Ipv4addr_to_str(rt.GetNextHop()));
+		if (it != ip_to_id_map.end())
+			nextHopNodeId = static_cast<uint32_t>(it->second);
+
+		if (nextHopNodeId != neighborId)
+			continue;
+
+		rt.SetOutputDevice(newDev);
+		rt.SetInterface(newIface);
+		rt.SetNextHop(newNextHop);
+		rt.SetNextHopChannel(static_cast<uint8_t>(bestChannel));
+		rt.SetPathEtt(bestEtt);
+
+		m_routingTable.DeleteRoute(kv.first);
+		m_routingTable.AddRoute(rt);
+
+		NS_LOG_DEBUG("DataPhase-RouteUpdate dst=" << kv.first
+			<< " newNextHop=" << newNextHop << " newCh=" << bestChannel);
+	}
+
+	return true;
+}
+
+void
+RoutingProtocol::ActivateDataPhase()
+{
+	m_dataPhaseActive = true;
+	NS_LOG_DEBUG("DataPhase activated on node=" << m_node->GetId());
 }
 
 void

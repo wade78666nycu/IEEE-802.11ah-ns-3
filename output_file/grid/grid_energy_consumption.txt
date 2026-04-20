@@ -4,32 +4,32 @@ total nodes: 25
 Calculation: Energy = sum(TX Power * TX Duration) for all packets
 ==============================
 
-node  0: 0.046950463 J
-node  1: 0.008771909 J
-node  2: 0.028182819 J
-node  3: 0.013099030 J
-node  4: 0.007042987 J
-node  5: 0.010128966 J
-node  6: 0.010784230 J
-node  7: 0.035067991 J
-node  8: 0.010125865 J
-node  9: 0.017994982 J
-node 10: 0.007847439 J
-node 11: 0.008185880 J
-node 12: 0.008944272 J
-node 13: 0.008371415 J
-node 14: 0.027511276 J
-node 15: 0.010187443 J
-node 16: 0.008344172 J
-node 17: 0.008613995 J
-node 18: 0.008640910 J
-node 19: 0.019208332 J
-node 20: 0.006951487 J
-node 21: 0.016913774 J
-node 22: 0.008338300 J
-node 23: 0.010082904 J
-node 24: 0.011962478 J
+node  0: 0.048223432 J
+node  1: 0.005627574 J
+node  2: 0.025371484 J
+node  3: 0.005791986 J
+node  4: 0.005849755 J
+node  5: 0.005880692 J
+node  6: 0.009982133 J
+node  7: 0.020049399 J
+node  8: 0.026541282 J
+node  9: 0.015340769 J
+node 10: 0.006916465 J
+node 11: 0.007332487 J
+node 12: 0.008090879 J
+node 13: 0.026189093 J
+node 14: 0.006970648 J
+node 15: 0.006326494 J
+node 16: 0.007335617 J
+node 17: 0.007605439 J
+node 18: 0.027102850 J
+node 19: 0.008927906 J
+node 20: 0.006175675 J
+node 21: 0.006360340 J
+node 22: 0.007252163 J
+node 23: 0.006392128 J
+node 24: 0.011966694 J
 
 ==============================
-Total Network Energy: 0.3583 Joules
-Average per Node: 0.014330133 Joules
+Total Network Energy: 0.3196 Joules
+Average per Node: 0.012784135 Joules

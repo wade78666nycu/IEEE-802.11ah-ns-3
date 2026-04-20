@@ -1,7 +1,7 @@
 MAC Retry Summary
 =================
 short_retry_count: 0
-long_retry_count: 604
+long_retry_count: 829
 final_rts_failed_count: 0
-final_data_failed_count: 11
-total_retry_related_events: 615
+final_data_failed_count: 6
+total_retry_related_events: 835

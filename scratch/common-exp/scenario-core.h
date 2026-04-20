@@ -135,7 +135,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     const double ref_loss = calculate_refence_loss(freq, ref_distance);
 
     std::vector<Ptr<YansWifiChannel>> channel_vec(cfg.device_num);
-    std::cout << "Reference Loss: " << ref_loss;
+    
     for (unsigned int i = 0; i < cfg.device_num; ++i)
     {
         YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
@@ -455,6 +455,38 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
 
     std::ofstream aodv_log_file("output_file/" + std::string(cfg.scenario_name)+"/aodv_" + cfg.scenario_name + "_path.log");
     std::streambuf* const orig_clog_buf = std::clog.rdbuf(aodv_log_file.rdbuf());
+
+    // Schedule data-phase ETT activation: when data transfer starts, each node switches
+    // from hello-beacon ETT to data-driven ETT measurement.
+    if (cfg.enable_hello && cfg.routing_method == "aodv")
+    {
+        for (unsigned int i = 0; i < cfg.num_nodes; ++i)
+        {
+            Ptr<Node> node = node_container.Get(i);
+            Ptr<Ipv4RoutingProtocol> routingProto = node->GetObject<Ipv4>()->GetRoutingProtocol();
+            Ptr<aodv::RoutingProtocol> aodvProto = DynamicCast<aodv::RoutingProtocol>(routingProto);
+            if (!aodvProto)
+            {
+                // Try Ipv4ListRouting wrapper
+                Ptr<Ipv4ListRouting> listRouting = DynamicCast<Ipv4ListRouting>(routingProto);
+                if (listRouting)
+                {
+                    for (uint32_t j = 0; j < listRouting->GetNRoutingProtocols(); ++j)
+                    {
+                        int16_t priority;
+                        aodvProto = DynamicCast<aodv::RoutingProtocol>(listRouting->GetRoutingProtocol(j, priority));
+                        if (aodvProto)
+                            break;
+                    }
+                }
+            }
+            if (aodvProto)
+            {
+                Simulator::Schedule(data_phase_start_time,
+                    &aodv::RoutingProtocol::ActivateDataPhase, PeekPointer(aodvProto));
+            }
+        }
+    }
 
     Simulator::Stop(total_simulation_time);
     Simulator::Run();
