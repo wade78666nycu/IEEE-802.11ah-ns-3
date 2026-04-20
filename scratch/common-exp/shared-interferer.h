@@ -71,8 +71,8 @@ MakeMultiJammerHook(const uint32_t near_node_id,
             YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
             wifiPhy.Set("ShortGuardEnabled",        BooleanValue(false));
             wifiPhy.Set("ChannelWidth",             UintegerValue(1));
-            wifiPhy.Set("TxPowerStart",             DoubleValue(8));
-            wifiPhy.Set("TxPowerEnd",               DoubleValue(8));
+            wifiPhy.Set("TxPowerStart",             DoubleValue(12));
+            wifiPhy.Set("TxPowerEnd",               DoubleValue(12));
             wifiPhy.Set("TxPowerLevels",            UintegerValue(2));
             wifiPhy.Set("RxNoiseFigure",            DoubleValue(cfg.rx_noise_figure));
             wifiPhy.Set("LdpcEnabled",              BooleanValue(false));
@@ -97,11 +97,6 @@ MakeMultiJammerHook(const uint32_t near_node_id,
             dca->SetMaxCw(0);
             dca->SetAifsn(0);
 
-            Ptr<YansWifiPhy> jamPhy = DynamicCast<YansWifiPhy>(wifiDev->GetPhy());
-            NS_LOG_UNCOND("[Jammer] ch_idx=" << channel_idx
-                          << " jamPhy channel ptr=" << jamPhy->GetChannel()
-                          << " expected=" << channels[channel_idx]);
-
             PacketSocketHelper psHelper;
             psHelper.Install(jammer);
 
@@ -119,17 +114,8 @@ MakeMultiJammerHook(const uint32_t near_node_id,
             ApplicationContainer apps = onoff.Install(jammer.Get(0));
             double this_start = start_s + tx_time_s * ch_order;
             apps.Start(Seconds(this_start));
-            apps.Stop(Seconds(20));
+            apps.Stop(Seconds(120));
             ch_order++;
-
-            // Enable pcap tracing to verify jammer is transmitting
-            wifiPhy.EnablePcap("jammer-ch" + std::to_string(channel_idx), jamDevs.Get(0), true);
-
-            NS_LOG_UNCOND("[Jammer] ch_idx=" << channel_idx
-                          << " near_node=" << near_node_id
-                          << " pos=(" << pos.x << "," << pos.y << ")"
-                          << " start=" << this_start << "s"
-                          << " rate=" << data_rate_kbps << "Kbps");
         }
     };
 }

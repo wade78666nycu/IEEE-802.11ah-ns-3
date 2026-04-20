@@ -44,7 +44,7 @@ struct ScenarioConfig
     bool prefer_low_power_channel{false};
     bool reduce_default_power{false};
     bool show_log{true};
-    double hello_power_reduction_db{0.0}; // dBm reduction for Hello beacons vs data (0 = disabled)
+    double hello_power_reduction_db{2.0}; // dBm reduction for Hello beacons vs data (0 = disabled)
 
     std::string scenario_name{"exp"};
 };
@@ -135,11 +135,12 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     const double ref_loss = calculate_refence_loss(freq, ref_distance);
 
     std::vector<Ptr<YansWifiChannel>> channel_vec(cfg.device_num);
+    std::cout << "Reference Loss: " << ref_loss;
     for (unsigned int i = 0; i < cfg.device_num; ++i)
     {
         YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
         
-        /*if(i==5){
+        /*if(i==2){
             Wifiphy_Setting(wifiPhy,
                         freq,
                         TxPowerStart,
@@ -147,8 +148,8 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                         power_levels,
                         20,
                         cfg.cca_threshold);
-        }
-        else{*/
+        }*/
+        //else{
             Wifiphy_Setting(wifiPhy,
                             freq,
                             TxPowerStart,
@@ -156,8 +157,10 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                             power_levels,
                             cfg.rx_noise_figure,
                             cfg.cca_threshold);
-        //}
+        //  }
         YansWifiChannelHelper wifiChannel;
+        /*if(i==0)path_loss_exponent=2.6;
+        else path_loss_exponent=2.5;*/
         WifiChannel_Setting(wifiChannel, path_loss_exponent, ref_loss);
         channel_vec[i] = wifiChannel.Create();
         wifiPhy.SetChannel(channel_vec[i]);
@@ -261,7 +264,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     NS_ASSERT_MSG(*max_element(dst_node_vec.begin(), dst_node_vec.end()) < cfg.num_nodes,
                   "invalid destination node id in dst_node_vec.");
 
-    Time total_simulation_time = Seconds(30);
+    Time total_simulation_time = Seconds(120);
     const DataRate data_rate("30Kbps");
     Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
     Time hello_beacon_start_time = Seconds(0);
@@ -364,11 +367,13 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
             Simulator::Schedule(Seconds(9.0), &Hello_beacon_App::StopApplication,
                                 PeekPointer(hello_beacon_app));
             // Restart hello at 12s (after GradPC at 10s-11s) for ETT re-measurement
-            Simulator::Schedule(Seconds(12.0), &Hello_beacon_App::StartApplication,
+            if(cfg.enable_power_control){
+                Simulator::Schedule(Seconds(12.0), &Hello_beacon_App::StartApplication,
                                 PeekPointer(hello_beacon_app));
-            Simulator::Schedule(Seconds(20.0), &Hello_beacon_App::StopApplication,
+                Simulator::Schedule(Seconds(20.0), &Hello_beacon_App::StopApplication,
                                 PeekPointer(hello_beacon_app));
-
+            }
+            
             // Data-phase hello cycles: 3s on, 7s off (20-23s, 30-33s, ...)
             /*for (double t = 30.0; t < total_simulation_time.GetSeconds() - 1.0; t += 20.0)
             {
@@ -409,7 +414,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         hooks.setup_interferers(node_container, cfg);
     }
 
-    Time recv_pkt_start_time = cfg.enable_hello ? data_phase_start_time : Seconds(9);
+    Time recv_pkt_start_time = cfg.enable_hello ? data_phase_start_time : Seconds(1);
     Time recv_pkt_end_time = total_simulation_time - Seconds(1);
     Time send_pkt_end_time = total_simulation_time - Seconds(2);
     double min_send_pkt_start_time = recv_pkt_start_time.GetSeconds();
@@ -486,12 +491,12 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     const unsigned long total_sent_packets = src_node_vec.size() * cfg.send_packet_num;
     const double pdr_percent = total_sent_packets ? (static_cast<double>(total_recv_packets) / total_sent_packets) * 100.0
                                                   : 0.0;
-    const double data_transfer_duration_s =
+    /*const double data_transfer_duration_s =
         (total_recv_packets > 0 && global_last_recv_ns > global_first_recv_ns)
             ? static_cast<double>(global_last_recv_ns - global_first_recv_ns) / 1e9
-            : total_simulation_time.GetSeconds();
+            : total_simulation_time.GetSeconds();*/
     const double throughput_bps = static_cast<double>(total_recv_packets * packet_size * 8) /
-                                  data_transfer_duration_s;
+                                  total_simulation_time.GetSeconds();
     const double avg_delay_ms = total_recv_packets ? (static_cast<double>(total_delay_ns) / total_recv_packets) / 1e6
                                                    : 0.0;
     const double max_delay_ms = static_cast<double>(max_delay_ns) / 1e6;
@@ -520,7 +525,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         run_summary_file << "throughput_bps=" << throughput_bps << "\n";
         run_summary_file << "avg_delay_ms=" << avg_delay_ms << "\n";
         run_summary_file << "max_delay_ms=" << max_delay_ms << "\n";
-        run_summary_file << "data_transfer_duration_s=" << data_transfer_duration_s << "\n";
+        //run_summary_file << "data_transfer_duration_s=" << data_transfer_duration_s << "\n";
         run_summary_file << "total_simulation_time_s=" << total_simulation_time.GetSeconds() << "\n";
     }
 

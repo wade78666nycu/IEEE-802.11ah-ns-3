@@ -1,29 +1,24 @@
 Waf: Entering directory `/home/wade/ah-lab/build'
-[1109/1485] Compiling src/applications/model/hello-beacon.cc
-[1462/1485] Linking build/libns3-dev-applications-debug.so
-[1464/1485] Linking build/libns3-dev-aodv-debug.so
-[1468/1485] Linking build/libns3-dev-dsr-debug.so
-[1470/1485] Linking build/libns3-dev-mesh-debug.so
-[1471/1485] Linking build/scratch/rand-exp/rand-exp
-[1472/1485] Linking build/utils/ns3-dev-print-introspected-doxygen-debug
-[1473/1485] Linking build/scratch/grid-exp/grid-exp
-[1474/1485] Linking build/utils/ns3-dev-test-runner-debug
+[ 838/1485] Compiling scratch/rand-exp/rand-exp.cc
+[ 842/1485] Compiling scratch/grid-exp/grid-exp.cc
+[1472/1485] Linking build/scratch/grid-exp/grid-exp
+[1473/1485] Linking build/scratch/rand-exp/rand-exp
 Waf: Leaving directory `/home/wade/ah-lab/build'
 Build commands will be stored in build/compile_commands.json
-'build' finished successfully (4.734s)
+'build' finished successfully (3.849s)
 Lab Start
-source node:  22 ---> destination node:  18
-source node:   7 ---> destination node:  11
-source node:  39 ---> destination node:  21
-source node:  14 ---> destination node:  12
-source node:  40 ---> destination node:  47
-source node:  30 ---> destination node:  41
-source node:  25 ---> destination node:  48
-Total received packets / Total send packet : 7/7
-PDR 7/7 = 100.00%
-Throughput: 4.81 Kbps
-Average delay: 680.743 ms
-Max delay: 1471.640 ms
+source node:  11 ---> destination node:  30
+source node:  41 ---> destination node:   9
+source node:  27 ---> destination node:  22
+source node:   5 ---> destination node:   6
+source node:  12 ---> destination node:  39
+source node:  13 ---> destination node:  44
+source node:  18 ---> destination node:  35
+Total received packets / Total send packet : 1841/2100
+PDR 1841/2100 = 87.67%
+Throughput: 85.55 Kbps
+Average delay: 137.967 ms
+Max delay: 3329.400 ms
 [rand] aodv hello=on power_control=on prefer_low_power=off ett_tol=1
 [rand] power_control=GradPC proportional
-Total Network Energy: 0.9506 Joules
+Total Network Energy: 1.2957 Joules

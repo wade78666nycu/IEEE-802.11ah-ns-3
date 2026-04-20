@@ -54,7 +54,7 @@ main(int argc, char* argv[])
     ScenarioConfig cfg;
     cfg.scenario_name = "grid";
     cfg.num_nodes = 25;
-    cfg.rand_seed = 2;
+    cfg.rand_seed = 5;
 
     CommandLine cmd;
     cmd.AddValue("num_nodes", "total number of nodes", cfg.num_nodes);
@@ -82,6 +82,6 @@ main(int argc, char* argv[])
     ScenarioHooks hooks;
     hooks.setup_mobility = set_mobility_grid;
     hooks.select_src_dst_pairs = select_grid_pairs;
-    hooks.setup_jammer = MakeMultiJammerHook(20, {0, 1, 2}); // jam all 3 channels near node 20
+    //hooks.setup_jammer = MakeMultiJammerHook(20, {0}); 
     return RunScenario(cfg, hooks);
 }

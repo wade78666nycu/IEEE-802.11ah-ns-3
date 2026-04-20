@@ -1,0 +1,96 @@
+目前的改動:
+
+目前的演算法是，當在data transfer的時候同時發送hello message來計算當下節點的ETT。
+
+有一個問題是，因為802.11ah的頻寬只有1MHz，Capacity本身就很低了，如果再傳送更多的控制封包會造成網路大擁塞。
+
+所以在Data transfer的時候，不再發送Hello message，把ETT改成用Data來計算。
+
+但在一開始沒有Data transfer的時候，一樣用Hello message來計算(在1s到10s時)，計算完之後開始做Data transfer，第一次的RREQ用Hello message算完的ETT來做AODV找路徑。
+
+在Data transfer的過程當中，我的節點會開始去偵測我的PHY的參數。
+
+1.
+追蹤源使用"m_phyTxBeginTrace"：PHY 每次實際發射訊號都會觸發，包含重傳。
+這是正確的，因為 ETX = 總傳送次數 / 成功次數，重傳本來就要計入 txAttempts。
+(例如一個封包重傳 4 次才收到 ACK，txAttempts 應加 5，txSuccess 加 1，ETX = 5)
+注意：m_TxAttempts 和 m_TxSuccess 都是 per (鄰居, 通道) 的計數器，
+      用 std::map<std::pair<Mac48Address, uint16_t>, CounterPair> 管理，
+      避免同時對多個鄰居傳資料時計數互相污染。
+
+當追蹤到 m_phyTxBeginTrace 傳送封包時：
+若封包是數據封包 且 不為廣播封包 {
+	Mac48Address neighbor = 封包目的地址;
+	uint16_t channel = 目前使用的通道;
+	auto key = std::make_pair(neighbor, channel);
+	m_counters[key].txAttempts++;
+
+	若 m_counters[key].txAttempts >= 6  且 尚未觸發過通道切換 {
+		(用 >= 6 而非 == 6，避免計數跳過而漏觸發)
+		若 有其他未被 blacklist 且可傳輸(ETT != INF)的通道 {
+			換到ETT較小的通道傳輸;
+			將原通道加入 blacklist，防止通道間震盪(oscillation);
+			(blacklist 在路由重建 RERR/RREQ 時才清除)
+			更新ETT表格;
+			m_counters[key].txAttempts=0;
+			m_counters[key].txSuccess=0;
+			改掉Route Table Entry的 下一跳通道 與 路徑ETT;
+		} else {
+			// 沒有其他可用通道，直接發 RERR
+			// (繼續等只會讓封包 queue 堆積)
+			m_counters[key].txAttempts=0;
+			m_counters[key].txSuccess=0;
+			發起RERR;
+		}
+	}
+}
+    }
+
+2.
+追蹤源”m_phyRxEndTrace”，會知道節點接收到封包。
+當追蹤到節點接收 ACK 封包時，更新對應 (鄰居, 通道) 的計數器。
+若接收到封包 {
+若封包是ACK封包 且 目的節點是自身 {
+	Mac48Address neighbor = ACK來源地址;
+	uint16_t channel = 目前使用的通道;
+	auto key = std::make_pair(neighbor, channel);
+	m_counters[key].txSuccess++;
+	ETX = (m_counters[key].txAttempts) / (m_counters[key].txSuccess);
+	ETT_current = ETX * (Packet_Size)/(Data_Rate) ; 
+	ETT = 0.8 * ETT + 0.2 * ETT_current;  (EWMA)
+	更新ETT表格;
+	m_counters[key].txAttempts=0;
+	m_counters[key].txSuccess=0;
+}
+    }
+
+
+3.
+追蹤源"MacTxFinalDataFailed"，會知道節點丟失封包(重傳七次失敗)。
+若追蹤到丟失封包 {
+	Mac48Address neighbor = 失敗封包的目的地址;
+	uint16_t channel = 目前使用的通道;
+	auto key = std::make_pair(neighbor, channel);
+
+	ETX = 10;  (確保比任何正常 ETX 都大，強制觸發路由切換)
+	ETT_current = ETX * (Packet_Size)/(Data_Rate) ; 
+	ETT = 0.8 * ETT + 0.2 * ETT_current;  (EWMA)
+	更新ETT表格;
+	m_counters[key].txAttempts=0;
+	m_counters[key].txSuccess=0;
+
+	// 清除與該 neighbor 相關的所有 blacklist，讓 RREQ 重建路由時可重新考慮所有通道。
+	清除 neighbor 相關的 blacklist entries;
+
+	發起RERR。
+    }
+
+4.補充
+不一定要收到一個ACK就更新ETT。
+用EWMA方法更新，讓ETT更新平緩，ETT = 0.8 * ETT + 0.2 * ETT_current。
+多通道優勢
+在重傳六次時，先去看看能不能跳到其他通道傳輸。
+避免直接發起RRER導致掉很多封包。
+速率控制優勢
+當平均重傳5-6次，節點會降速，雖降速導致ETT上升，但同時傳輸變穩固，ETX下降，又會導致ETT下降。
+避免m_TxAttempt = 7 發起RERR產生大量掉包 !

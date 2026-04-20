@@ -47,7 +47,7 @@ class IdCache
 {
   public:
 	/// Maximum number of times a RREQ can be re-forwarded due to metric improvement
-	static constexpr uint32_t MaxReforwardCount = 2;
+	static constexpr uint32_t MaxReforwardCount = 1;
 
 	/// c-tor
 	IdCache(Time lifetime)

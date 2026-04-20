@@ -1,0 +1,25 @@
+====================================================================================================
+AODV path analysis
+====================================================================================================
+
+source=0 destination=24
+discoveries=1
+
+  discovery #1 (rreq_id=1)
+  selected cumulative ETT=3.612, next hop=18, next hop channel=1
+
+  selected path:
+  0 -> 10 -> 16 -> 17 -> 18 -> 24
+
+  candidates reaching destination:
+  position      sender  channel  link_ett  cumulative  selected
+  t=11.3245s    18      1        0.833     3.612       yes
+  t=11.3105s    23      1        0.622     3.820       
+  t=11.3144s    18      1        0.833     3.843       
+
+  path breakdown:
+  0 -> 10  link_ett=0.829  cumulative=0.829  channel=2  t=11.2653s
+  10 -> 16  link_ett=0.746  cumulative=1.575  channel=1  t=11.2781s
+  16 -> 17  link_ett=0.602  cumulative=2.177  channel=1  t=11.2832s
+  17 -> 18  link_ett=0.602  cumulative=2.779  channel=2  t=11.3184s
+  18 -> 24  link_ett=0.833  cumulative=3.612  channel=1  t=11.3245s
