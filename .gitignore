@@ -1,0 +1,6 @@
+/output_file/
+/build/
+*.pcap
+*.pcap.gz
+*.o
+.venv/
