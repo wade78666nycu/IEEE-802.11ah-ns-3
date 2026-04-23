@@ -76,24 +76,6 @@ Ipv4addr_to_str(const Ipv4Address ipv4_addr)
 }
 
 //-----------------------------------------------------------------------------
-/// Helper: query the WifiPhy for the actual data rate on a given device.
-/// Uses the PHY's first supported mode as the base rate — this is safe (no
-/// per-station manager queries) and gives the minimum supported rate.
-/// Actual per-neighbor rate is tracked via MonitorSnifferTx in
-/// m_lastDataRateBpsByChannel and should be used instead when available.
-static double
-GetPhyBaseBandwidthBps(Ptr<WifiNetDevice> localDev)
-{
-	if (!localDev)
-		return 300.0 * 1024.0 * 8.0;
-	Ptr<WifiPhy> phy = localDev->GetPhy();
-	if (!phy || phy->GetNModes() == 0)
-		return 300.0 * 1024.0 * 8.0;
-	uint64_t rate = phy->GetMode(0).GetDataRate();
-	return (rate > 0) ? static_cast<double>(rate) : 300.0 * 1024.0 * 8.0;
-}
-
-//-----------------------------------------------------------------------------
 /// Tag used by AODV implementation
 
 class DeferredRouteOutputTag : public Tag
@@ -1044,10 +1026,6 @@ RoutingProtocol::NotifyInterfaceUp(uint32_t i)
 			MakeCallback(&RoutingProtocol::DataPhasePhyTxBeginLocal, this));
 		phy->TraceConnectWithoutContext("PhyRxEnd",
 			MakeCallback(&RoutingProtocol::DataPhasePhyRxEndLocal, this));
-		// Track actual TX data rate per channel via MonitorSnifferTx
-		phy->TraceConnectWithoutContext("MonitorSnifferTx",
-			MakeBoundCallback(&RoutingProtocol::MonitorSnifferTxBound, this,
-			                  static_cast<uint16_t>(i)));
 	}
 	Ptr<WifiRemoteStationManager> stationMgr = wifi->GetRemoteStationManager();
 	if (stationMgr)
@@ -2750,30 +2728,6 @@ RoutingProtocol::DataPhaseMacTxFinalFailedLocal(Mac48Address address)
 	DataPhaseMacTxFinalFailed("", address);
 }
 
-// ----- MonitorSnifferTx: capture actual per-channel TX data rate -----
-void
-RoutingProtocol::MonitorSnifferTxBound(RoutingProtocol* self,
-                                       uint16_t ifIndex,
-                                       Ptr<const Packet> packet,
-                                       uint16_t /*channelFreqMhz*/,
-                                       uint16_t /*channelWidth*/,
-                                       uint32_t /*rate*/,
-                                       bool /*isShortPreamble*/,
-                                       WifiTxVector txv)
-{
-	// Only track unicast data frames (skip ACKs, beacons, broadcast)
-	Ptr<Packet> copy = packet->Copy();
-	WifiMacHeader hdr;
-	if (!copy->PeekHeader(hdr))
-		return;
-	if (!hdr.IsData() || hdr.GetAddr1().IsGroup())
-		return;
-
-	uint64_t rate = txv.GetMode().GetDataRate();
-	if (rate > 0)
-		self->m_lastDataRateBpsByChannel[ifIndex] = static_cast<double>(rate);
-}
-
 // ----- Section 1: PHY TX Begin -----
 void
 RoutingProtocol::DataPhasePhyTxBegin(std::string context, Ptr<const Packet> packet)
@@ -2844,14 +2798,12 @@ RoutingProtocol::DataPhasePhyRxEnd(std::string context, Ptr<const Packet> packet
 	Mac48Address ackDst = hdr.GetAddr1();
 	uint16_t channel = 0;
 	bool isForUs = false;
-	Ptr<WifiNetDevice> localWifiDev = nullptr;
 	for (uint32_t d = 0; d < m_node->GetNDevices(); ++d)
 	{
 		Ptr<WifiNetDevice> wifiDev = DynamicCast<WifiNetDevice>(m_node->GetDevice(d));
 		if (wifiDev && wifiDev->GetMac()->GetAddress() == ackDst)
 		{
 			channel = static_cast<uint16_t>(m_ipv4->GetInterfaceForDevice(wifiDev));
-			localWifiDev = wifiDev;
 			isForUs = true;
 			break;
 		}
@@ -2888,10 +2840,7 @@ RoutingProtocol::DataPhasePhyRxEnd(std::string context, Ptr<const Packet> packet
 	double etx = static_cast<double>(counters.txAttempts) / static_cast<double>(counters.txSuccess);
 
 	const double packet_size_bits = 256.0 * 8.0;
-	auto rateIt = m_lastDataRateBpsByChannel.find(channel);
-	const double bandwidth_bps = (rateIt != m_lastDataRateBpsByChannel.end())
-		? rateIt->second
-		: GetPhyBaseBandwidthBps(localWifiDev);
+	const double bandwidth_bps = 300.0 * 1024.0 * 8.0;
 	double ett_current = etx * packet_size_bits / bandwidth_bps * 1000.0;
 
 	uint32_t neighborId = 0;
@@ -2959,18 +2908,7 @@ RoutingProtocol::DataPhaseMacTxFinalFailed(std::string context, Mac48Address add
 
 	NeighborChannelKey key(address, channel);
 
-	// Find local WifiNetDevice for this channel to query actual data rate
-	Ptr<WifiNetDevice> localWifiDev = nullptr;
-	for (uint32_t d = 0; d < m_node->GetNDevices(); ++d)
-	{
-		Ptr<WifiNetDevice> wifiDev = DynamicCast<WifiNetDevice>(m_node->GetDevice(d));
-		if (wifiDev && static_cast<uint16_t>(m_ipv4->GetInterfaceForDevice(wifiDev)) == channel)
-		{
-			localWifiDev = wifiDev;
-			break;
-		}
-	}
-
+	
 	// Write ETX=7 penalty via EWMA into the hello-beacon ETT table.
 	// ETX=7 reflects the actual MAC retry limit — more accurate than an
 	// arbitrary ETX=10.  Using EWMA (not direct overwrite) avoids a sudden
@@ -2988,10 +2926,7 @@ RoutingProtocol::DataPhaseMacTxFinalFailed(std::string context, Mac48Address add
 		{
 			const double etx_penalty = 7.0;
 			const double packet_size_bits = 256.0 * 8.0;
-			auto rateIt2 = m_lastDataRateBpsByChannel.find(channel);
-			const double bandwidth_bps = (rateIt2 != m_lastDataRateBpsByChannel.end())
-				? rateIt2->second
-				: GetPhyBaseBandwidthBps(localWifiDev);
+			const double bandwidth_bps = 300.0 * 1024.0 * 8.0;
 			double ett_penalty = etx_penalty * packet_size_bits / bandwidth_bps * 1000.0;
 			uint32_t neighborId = 0;
 			if (ResolveMacToNodeId(address, neighborId))

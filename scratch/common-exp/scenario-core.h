@@ -28,7 +28,7 @@ struct ScenarioConfig
     unsigned int num_nodes{25};
     unsigned int device_num{3};
     unsigned int send_packet_num{500};
-    unsigned int gradpc_type{3};
+    unsigned int gradpc_type{2};
     unsigned int rx_noise_figure{7};
     int rand_seed{2};
 

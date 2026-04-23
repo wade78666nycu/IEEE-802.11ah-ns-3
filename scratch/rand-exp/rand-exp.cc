@@ -39,7 +39,7 @@ main(int argc, char* argv[])
 {
     ScenarioConfig cfg;
     cfg.scenario_name = "rand";
-    cfg.num_nodes = 100;
+    cfg.num_nodes = 50;
     cfg.rand_seed = 10;
 
     CommandLine cmd;

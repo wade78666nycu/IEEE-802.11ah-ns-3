@@ -405,7 +405,7 @@ Hello_beacon_App::get_ett(uint32_t neighbor_id, uint32_t ifIndex)
     // Get actual PHY base data rate from the local device on this interface.
     // Using WifiPhy::GetMode(0) is safe — no per-station manager query needed.
     double bandwidth_bps = 300.0 * 1024.0 * 8.0; // fallback (~2.4 Mbps application layer)
-    {
+    /*{
         Ptr<Node> node = GetNode();
         Ptr<Ipv4> ipv4 = node ? node->GetObject<Ipv4>() : nullptr;
         if (ipv4 && ifIndex < static_cast<uint32_t>(ipv4->GetNInterfaces()))
@@ -423,7 +423,7 @@ Hello_beacon_App::get_ett(uint32_t neighbor_id, uint32_t ifIndex)
                 }
             }
         }
-    }
+    }*/
 
     return etx * packet_size_bits / bandwidth_bps * 1000.0; // Convert to milliseconds
 }

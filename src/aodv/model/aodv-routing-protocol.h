@@ -457,7 +457,7 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 
 	/// Last observed data TX rate (bps) per channel interface index.
 	/// Updated via MonitorSnifferTx; falls back to PHY base rate when not yet observed.
-	std::map<uint16_t, double> m_lastDataRateBpsByChannel;
+
 
 
 
@@ -474,17 +474,6 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	void DataPhasePhyTxBeginLocal(Ptr<const Packet> packet);
 	void DataPhasePhyRxEndLocal(Ptr<const Packet> packet);
 	void DataPhaseMacTxFinalFailedLocal(Mac48Address address);
-
-	/// Static bound callback for MonitorSnifferTx — captures actual per-channel TX rate.
-	/// Bound with (this, ifIndex); remaining args come from the trace.
-	static void MonitorSnifferTxBound(RoutingProtocol* self,
-	                                  uint16_t ifIndex,
-	                                  Ptr<const Packet> packet,
-	                                  uint16_t channelFreqMhz,
-	                                  uint16_t channelWidth,
-	                                  uint32_t rate,
-	                                  bool isShortPreamble,
-	                                  WifiTxVector txv);
 
 	/// Attempt to switch to a better channel for the given neighbor MAC.
 	/// Returns true if switch was performed.
