@@ -75,14 +75,14 @@ run_case \
     --enable_hello=true \
     --enable_power_control=false \
     "${extra_args[@]}"
-
+'''
 run_case \
     "03_hello_off_power_off" \
     "3. enable_hello=false, enable_power_control=false" \
     --enable_hello=false \
     --enable_power_control=false \
     "${extra_args[@]}"
-
+'''
 run_case \
     "04_hello_on_power_on_prefer_low_power" \
     "4. enable_hello=true, enable_power_control=true, prefer_low_power_channel=true" \

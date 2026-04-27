@@ -504,7 +504,34 @@ RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel
 		return std::numeric_limits<double>::infinity();
 	};
 
-	double minEtt = std::numeric_limits<double>::infinity();
+	if (!m_preferLowPowerChannel)
+	{
+		// No preference: pick the channel with the smallest raw ETT (ch1 wins on ties).
+		double minEtt = std::numeric_limits<double>::infinity();
+		for (uint32_t ifIndex = 1; ifIndex <= ifaceCount; ++ifIndex)
+		{
+			double ett = getEtt(ifIndex);
+			if (std::isfinite(ett) && ett < minEtt)
+			{
+				minEtt      = ett;
+				bestChannel = static_cast<uint8_t>(ifIndex);
+			}
+		}
+		return minEtt;
+	}
+
+	// prefer_low_power_channel=true: discount higher channels so they are
+	// preferred when their raw ETT is comparable to ch1.
+	// ch1 × 1.0 (no discount), ch2 × 0.9, ch3 × 0.8.
+	// The returned ETT is always the raw value (not discounted).
+	auto channelDiscount = [](uint32_t ifIndex) -> double {
+		if (ifIndex == 3) return 0.8;
+		if (ifIndex == 2) return 0.9;
+		return 1.0;
+	};
+
+	double minDiscountedEtt = std::numeric_limits<double>::infinity();
+	double selectedRawEtt   = std::numeric_limits<double>::infinity();
 	for (uint32_t ifIndex = 1; ifIndex <= ifaceCount; ++ifIndex)
 	{
 		double ett = getEtt(ifIndex);
@@ -512,50 +539,16 @@ RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel
 		{
 			continue;
 		}
-		if (ett < minEtt)
+		double discounted = ett * channelDiscount(ifIndex);
+		if (discounted < minDiscountedEtt)
 		{
-			minEtt = ett;
+			minDiscountedEtt = discounted;
+			selectedRawEtt   = ett;
+			bestChannel      = static_cast<uint8_t>(ifIndex);
 		}
 	}
 
-	if (!std::isfinite(minEtt))
-	{
-		return minEtt;
-	}
-
-	if (!m_preferLowPowerChannel)
-	{
-		for (uint32_t ifIndex = 1; ifIndex <= ifaceCount; ++ifIndex)
-		{
-			double ett = getEtt(ifIndex);
-			if (!std::isfinite(ett))
-			{
-				continue;
-			}
-			if (ett == minEtt)
-			{
-				bestChannel = static_cast<uint8_t>(ifIndex);
-				return ett;
-			}
-		}
-		return minEtt;
-	}
-
-	// Channels are ordered by decreasing power: ch1 > ch2 > ch3.
-	// Iterate from lowest power (highest index) and pick the first within ETT tolerance.
-	const double ettThreshold = minEtt * m_channelSelectionEttTolerance;
-	for (uint32_t ifIndex = ifaceCount; ifIndex >= 1; --ifIndex)
-	{
-		double ett = getEtt(ifIndex);
-		if (!std::isfinite(ett) || ett > ettThreshold)
-		{
-			continue;
-		}
-		bestChannel = static_cast<uint8_t>(ifIndex);
-		return ett;
-	}
-
-	return minEtt;
+	return selectedRawEtt;
 }
 
 void

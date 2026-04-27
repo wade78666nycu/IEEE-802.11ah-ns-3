@@ -39,8 +39,8 @@ main(int argc, char* argv[])
 {
     ScenarioConfig cfg;
     cfg.scenario_name = "rand";
-    cfg.num_nodes = 50;
-    cfg.rand_seed = 10;
+    cfg.num_nodes = 100;
+    cfg.rand_seed = 9;
 
     CommandLine cmd;
     cmd.AddValue("num_nodes", "total number of nodes", cfg.num_nodes);

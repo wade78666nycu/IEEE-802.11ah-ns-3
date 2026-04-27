@@ -13,7 +13,7 @@ Hello_beacon_App::Hello_beacon_App()
 	      wait_interval(0),
 	      m_running(false),
 	      socket_type_id(TypeId::LookupByName("ns3::UdpSocketFactory")),
-	      m_packetSize(128),
+	      m_packetSize(256),
 	      m_port(80),
 	      m_hello_interval(MilliSeconds(80.0)),
 	      m_backoff_slot_time(MicroSeconds(100.0)),
@@ -190,13 +190,13 @@ Hello_beacon_App::StartApplication()
 		m_node_position = Vector2D(pos.x, pos.y);
 	}
 
-    if (m_uv->GetMin() < 0.0 || m_uv->GetMax() * m_backoff_slot_time > m_hello_interval)
+    if (m_uv->GetMin() < 0.0 || m_uv->GetMax() < m_uv->GetMin())
     {
-        // if min/max values are not valid, set to default values
-        const double max_backoff_slot = 32;
+        // values are out of range; reset to a safe default (8 slots × slot_time)
+        const double max_backoff_slot = std::floor(m_hello_interval / m_backoff_slot_time);
         const double min_backoff_slot = 0;
         set_backoff_limit(max_backoff_slot, min_backoff_slot);
-	    }
+    }
     set_socket();
 
 	    // Reset packet count
@@ -424,7 +424,6 @@ Hello_beacon_App::get_ett(uint32_t neighbor_id, uint32_t ifIndex)
             }
         }
     }*/
-
     return etx * packet_size_bits / bandwidth_bps * 1000.0; // Convert to milliseconds
 }
 

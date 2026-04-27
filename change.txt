@@ -394,3 +394,58 @@ RERR 發送時機：
   seed=7:  85.1% → 95.0%  (RERR 31)
   seed=9:  73.7% → 89.3%  (RERR 109)
   seed=10: 86.7% → 95.5%  (RERR 14)
+
+================================================================================
+問題7: Hello Beacon 時程三個問題
+================================================================================
+
+問題7a: Backoff 驗證邏輯錯誤（hello-beacon.cc StartApplication）
+-------------------------------------------------------------------
+原始驗證：
+  if (m_uv->GetMax() * m_backoff_slot_time > m_hello_interval)
+      → reset to max=32 slots
+
+問題：條件本身是為了防止 backoff 過長，但 reset 目標值（32 slots × 10ms = 320ms）
+      仍然遠大於 hello_interval（80ms），等於沒有修正。
+      而且這個限制本身就不合理：使用者故意設大 backoff 是為了讓 hello 在通道
+      相對安靜時才發送（分散各節點的發送時間），不應強制 backoff < hello_interval。
+
+修復（hello-beacon.cc）：
+  驗證條件改為只檢查 min < 0 或 max < min（真正的非法值）。
+  若需要 reset，回落到 floor(hello_interval / backoff_slot_time) 而非硬編碼 32。
+
+問題7b: Hello ETT 封包大小（128B）與 Data ETT 封包大小（256B）不一致
+----------------------------------------------------------------------
+原始 hello ETT 公式（hello-beacon.cc get_ett）：
+  packet_size_bits = m_packetSize * 8 = 128 × 8 = 1024 bits
+  ETT = ETX × 1024 / 2,457,600 × 1000 = ETX × 0.417 ms
+
+Data-phase ETT 公式（AODV data-phase EWMA 更新，change.txt 問題5）：
+  ETT = ETX × (256 × 8) / (300 × 1024 × 8) × 1000 = ETX × 0.833 ms
+
+差 2 倍：data-phase 更新後寫入 ETT 表的值比同等 ETX 的 hello ETT 大 2 倍，
+導致「有資料在跑的鏈路」在路由選擇時看起來比「只有 hello 量測」的鏈路差，
+反而讓 AODV 偏向選沒有在使用的備用路徑。
+
+修復（hello-beacon.cc constructor）：
+  m_packetSize: 128 → 256
+  兩者現在都是 ETX × 0.833 ms，寫入同一張 ETT 表時單位一致。
+  （m_packetSize 只影響 ETT 公式，不影響實際 hello 封包的 over-the-air 大小，
+    因為實際封包大小由 m_packet_content 長度決定。）
+
+問題7c: max_packet_count=12 導致 8 秒 phase 大部分閒置
+-------------------------------------------------------
+原始：max_packet_count = 12
+修正後 backoff（最大 640ms，平均 320ms）+ hello_interval（80ms）→ 平均間隔 ~400ms。
+12 封包 × 400ms = 4.8 秒，剩下 3.2 秒整個 phase 不再傳送 hello，
+量測樣本數少（DR granularity = 1/12 ≈ 8%）。
+
+修復（scenario-core.h）：
+  max_packet_count: 12 → 20
+  20 封包 × 400ms = 8 秒，剛好用完整個 phase，DR granularity 提升至 5%。
+
+Backoff 設計說明（scenario-core.h）：
+  max_backoff_slot = 64 slots, slot_time = 10ms → 最大 backoff = 640ms
+  有效間隔 = hello_interval(80ms) + U[0, 640ms] → 平均 400ms
+  目的：讓各節點在隨機的安靜時刻發送 hello，減少因多節點同時發送造成的碰撞，
+        使量測到的 ETX / delivery ratio 更能反映真實鏈路品質而非瞬時擁塞。

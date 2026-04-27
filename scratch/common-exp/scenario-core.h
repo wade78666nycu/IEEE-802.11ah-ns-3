@@ -28,7 +28,7 @@ struct ScenarioConfig
     unsigned int num_nodes{25};
     unsigned int device_num{3};
     unsigned int send_packet_num{500};
-    unsigned int gradpc_type{2};
+    unsigned int gradpc_type{1};
     unsigned int rx_noise_figure{7};
     int rand_seed{2};
 
@@ -304,7 +304,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         }
 
         Time hello_interval = MilliSeconds(80.0);
-        const float extra_tx_distance{80.0};
+        const float extra_tx_distance{150.0};
 
         std::vector<short> gradPC_func_vec;
         if (cfg.enable_power_control)
@@ -352,11 +352,15 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
             Ptr<Hello_beacon_App> hello_beacon_app = CreateObject<Hello_beacon_App>();
             hello_beacon_app->set_data_rate(data_rate);
             hello_beacon_app->set_hello_interval(hello_interval);
+            // Large backoff so hello beacons are sent at random quiet moments.
+            // With hello_interval=80ms and max_backoff=64×10ms=640ms, the effective
+            // inter-beacon interval is uniform in [80ms, 720ms], avg ~400ms.
+            // In an 8-second measurement phase each node sends ~20 beacons per channel.
             const unsigned int max_backoff_slot = 64;
             const unsigned int min_backoff_slot = 0;
             hello_beacon_app->set_backoff_limit(max_backoff_slot, min_backoff_slot);
             hello_beacon_app->set_backoff_slot_time(Time("10ms"));
-            hello_beacon_app->set_max_packet_count(12);
+            hello_beacon_app->set_max_packet_count(20);
             hello_beacon_app->run_interval = Seconds(0);   // disable auto-cycling
             hello_beacon_app->wait_interval = Seconds(0);
             hello_beacon_app->SetStartTime(hello_beacon_start_time);  // 1s
@@ -523,10 +527,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     const unsigned long total_sent_packets = src_node_vec.size() * cfg.send_packet_num;
     const double pdr_percent = total_sent_packets ? (static_cast<double>(total_recv_packets) / total_sent_packets) * 100.0
                                                   : 0.0;
-    /*const double data_transfer_duration_s =
-        (total_recv_packets > 0 && global_last_recv_ns > global_first_recv_ns)
-            ? static_cast<double>(global_last_recv_ns - global_first_recv_ns) / 1e9
-            : total_simulation_time.GetSeconds();*/
+    
     const double throughput_bps = static_cast<double>(total_recv_packets * packet_size * 8) /
                                   total_simulation_time.GetSeconds();
     const double avg_delay_ms = total_recv_packets ? (static_cast<double>(total_delay_ns) / total_recv_packets) / 1e6

@@ -111,7 +111,12 @@ Neighbors::Purge()
 			if (pred(*j))
 			{
 				NS_LOG_LOGIC("Close link to " << j->m_neighborAddress);
-				m_handleLinkFailure(j->m_neighborAddress);
+				// RFC 3561: only send RERR on actual link failure (MAC TX error),
+				// not on hello timeout (route expiry handled by routing table Purge).
+				if (j->close)
+				{
+					m_handleLinkFailure(j->m_neighborAddress);
+				}
 			}
 		}
 	}
