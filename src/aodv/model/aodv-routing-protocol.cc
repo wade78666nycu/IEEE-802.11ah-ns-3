@@ -172,6 +172,7 @@ RoutingProtocol::RoutingProtocol()
 	  m_nb(HelloInterval),
 	  m_rreqCount(0),
 	  m_rerrCount(0),
+	  m_totalRerrSent(0),
 	  m_rreqWaitTime(MilliSeconds(50)),
 	  m_useEttRouting(true),
 	  m_enableIntermediateRrep(false),
@@ -332,6 +333,11 @@ RoutingProtocol::GetTypeId(void)
 						  "If false, disable ETT/channel-aware custom routing behavior and use traditional AODV logic.",
 						  BooleanValue(true),
 						  MakeBooleanAccessor(&RoutingProtocol::m_useEttRouting),
+						  MakeBooleanChecker())
+			.AddAttribute("EnableChannelSwitchOnRetry",
+						  "If false, skip channel-switch on MAC retry threshold and send RERR directly (control group).",
+						  BooleanValue(true),
+						  MakeBooleanAccessor(&RoutingProtocol::m_enableChannelSwitchOnRetry),
 						  MakeBooleanChecker())
 			.AddAttribute("EnableIntermediateRrep",
 						  "Enable intermediate node RREP replies (disabled for ETT-based route selection)",
@@ -2509,6 +2515,7 @@ RoutingProtocol::SendRerrMessage(Ptr<Packet> packet, std::vector<Ipv4Address> pr
 												 << "; suppressing RERR");
 		return;
 	}
+	m_totalRerrSent++;
 	// If there is only one precursor, RERR SHOULD be unicast toward that precursor
 	if (precursors.size() == 1)
 	{
@@ -2761,7 +2768,7 @@ RoutingProtocol::DataPhasePhyTxBegin(std::string context, Ptr<const Packet> pack
 		<< " txAttempts=" << m_dataCounters[key].txAttempts);
 
 	static const uint32_t TX_ATTEMPT_THRESHOLD = 5;
-	if (m_dataCounters[key].txAttempts >= TX_ATTEMPT_THRESHOLD)
+	if (m_enableChannelSwitchOnRetry && m_dataCounters[key].txAttempts >= TX_ATTEMPT_THRESHOLD)
 	{
 		if (!TryChannelSwitch(neighborMac, channel))
 		{

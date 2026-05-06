@@ -256,7 +256,7 @@ def main():
                 add_edge(topology, node_id, node_position, tx_range, total_nodes)
         edges = topology.edges()
         edge_colors = [topology[u][v]['color'] for u,v in edges]
-        nx.draw(topology, node_position, with_labels=True, edge_color = edge_colors, **options)
+        nx.draw(topology, node_position, with_labels=False, edge_color = edge_colors, **options)
         if args.save_figure:
             # save figure
             out_path = io_paths["base_dir"] / "{}-{}.png".format(io_paths["prefix"], device_id)

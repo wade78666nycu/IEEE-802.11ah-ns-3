@@ -98,11 +98,6 @@ TraceTxEnergy(std::string context,
     (void)channelFreqMhz;
     (void)isShortPreamble;
 
-    if (!g_tx_energy_file.is_open())
-    {
-        return;
-    }
-
     size_t start = context.find("/NodeList/");
     if (start == std::string::npos)
     {
@@ -169,6 +164,10 @@ TraceTxEnergy(std::string context,
 
     g_node_tx_energy[node_id] += tx_energy_joules;
 
+    if (!g_tx_energy_file.is_open())
+    {
+        return;
+    }
     g_tx_energy_file << std::fixed << std::setprecision(9)
                      << "node=" << node_id << " dev=" << dev_idx
                      << " power=" << power_dbm << "dBm"
@@ -328,6 +327,15 @@ ExportEttMatrix(const NodeContainer& node_container)
             export_file << "\n";
         }
     }
+}
+
+double
+GetTotalNetworkEnergy()
+{
+    double total = 0.0;
+    for (const auto& kv : g_node_tx_energy)
+        total += kv.second;
+    return total;
 }
 
 void

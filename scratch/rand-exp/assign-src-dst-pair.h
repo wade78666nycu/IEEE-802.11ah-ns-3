@@ -6,10 +6,12 @@
 
 using namespace ns3;
 
+// max_flows=0 means use all available pairs for the given seed/num_nodes.
 void assign_src_dst_pair(const int rand_seed,
 						 const int num_nodes,
 						 std::vector<unsigned int>& src_node_vec,
-						 std::vector<unsigned int>& dst_node_vec);
+						 std::vector<unsigned int>& dst_node_vec,
+						 const unsigned int max_flows = 0);
 void seed4_src_dst_pair(const int num_nodes,
 						std::vector<unsigned int>& src_node_vec,
 						std::vector<unsigned int>& dst_node_vec);

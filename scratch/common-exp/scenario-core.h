@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iomanip>
@@ -26,6 +27,7 @@ using namespace ns3;
 struct ScenarioConfig
 {
     unsigned int num_nodes{25};
+    unsigned int num_flows{0};   // 0 = use all available pairs for the seed
     unsigned int device_num{3};
     unsigned int send_packet_num{500};
     unsigned int gradpc_type{1};
@@ -37,14 +39,15 @@ struct ScenarioConfig
     double channel_selection_ett_tolerance{1.1};
     unsigned int rreq_wait_time_ms{200};
 
+    std::string data_rate_str{"30Kbps"};
     std::string routing_method{"aodv"};
     bool export_node_info{true};
     bool enable_hello{true};
     bool enable_power_control{true};
     bool prefer_low_power_channel{false};
+    bool enable_channel_switch_on_retry{true};
     bool reduce_default_power{false};
     bool show_log{true};
-    double hello_power_reduction_db{2.0}; // dBm reduction for Hello beacons vs data (0 = disabled)
 
     std::string scenario_name{"exp"};
 };
@@ -128,7 +131,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
 
     const double TxPowerStart{cfg.default_tx_power};
     const double TxPowerEnd = TxPowerStart;
-    const int power_levels{2};
+    const int power_levels{1};
     const double freq{920.0};
     const double path_loss_exponent{2.5};
     const double ref_distance{1.0};
@@ -181,12 +184,13 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
 
     SetTraceOutputPrefix(cfg.scenario_name);
     InitializeTracing(cfg.show_log, cfg.show_log);
+    // Always connect energy trace so total network energy is available in the summary.
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/MonitorSnifferTx",
+                    MakeCallback(&TraceTxEnergy));
     if (cfg.show_log)
     {
         Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/MonitorSnifferTx",
                         MakeCallback(&TraceWifiTxRate));
-        Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/MonitorSnifferTx",
-                        MakeCallback(&TraceTxEnergy));
         Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/TxRtsFailed",
                         MakeCallback(&TraceMacTxRtsFailed));
         Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/MacTxDataFailed",
@@ -214,6 +218,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         aodv_helper.Set("ActiveRouteTimeout", TimeValue(Seconds(10.0)));
         aodv_helper.Set("UseEttRouting", BooleanValue(cfg.enable_hello));
         aodv_helper.Set("PreferLowPowerChannel", BooleanValue(cfg.prefer_low_power_channel));
+        aodv_helper.Set("EnableChannelSwitchOnRetry", BooleanValue(cfg.enable_channel_switch_on_retry));
         aodv_helper.Set("ChannelSelectionEttTolerance", DoubleValue(cfg.channel_selection_ett_tolerance));
         aodv_helper.Set("RreqWaitTime", TimeValue(MilliSeconds(cfg.rreq_wait_time_ms)));
         aodv_helper.Set("EnableIntermediateRrep", BooleanValue(!cfg.enable_hello));
@@ -265,7 +270,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                   "invalid destination node id in dst_node_vec.");
 
     Time total_simulation_time = Seconds(120);
-    const DataRate data_rate("30Kbps");
+    const DataRate data_rate(cfg.data_rate_str);
     Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
     Time hello_beacon_start_time = Seconds(0);
     Time hello_beacon_stop_time = Seconds(0);
@@ -352,15 +357,14 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
             Ptr<Hello_beacon_App> hello_beacon_app = CreateObject<Hello_beacon_App>();
             hello_beacon_app->set_data_rate(data_rate);
             hello_beacon_app->set_hello_interval(hello_interval);
-            // Large backoff so hello beacons are sent at random quiet moments.
-            // With hello_interval=80ms and max_backoff=64×10ms=640ms, the effective
-            // inter-beacon interval is uniform in [80ms, 720ms], avg ~400ms.
-            // In an 8-second measurement phase each node sends ~20 beacons per channel.
-            const unsigned int max_backoff_slot = 64;
+            // Backoff: max 16 slots × 10ms = 160ms, avg 80ms.
+            // Effective inter-beacon interval: 80ms (interval) + 80ms (avg backoff) = ~160ms.
+            // In an 8-second measurement phase: ~50 beacons per node → ~17 per channel (3 ch).
+            const unsigned int max_backoff_slot = 16;
             const unsigned int min_backoff_slot = 0;
             hello_beacon_app->set_backoff_limit(max_backoff_slot, min_backoff_slot);
             hello_beacon_app->set_backoff_slot_time(Time("10ms"));
-            hello_beacon_app->set_max_packet_count(20);
+            hello_beacon_app->set_max_packet_count(50);
             hello_beacon_app->run_interval = Seconds(0);   // disable auto-cycling
             hello_beacon_app->wait_interval = Seconds(0);
             hello_beacon_app->SetStartTime(hello_beacon_start_time);  // 1s
@@ -395,10 +399,6 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                 if (cfg.reduce_default_power)
                 {
                     grad_pc_app->set_reduce_default_power();
-                }
-                if (cfg.hello_power_reduction_db > 0.0)
-                {
-                    grad_pc_app->set_hello_power_reduction(cfg.hello_power_reduction_db);
                 }
                 grad_pc_app->SetStartTime(grad_pc_start_time);
                 grad_pc_app->SetStopTime(grad_pc_stop_time);
@@ -457,6 +457,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                                    << std::setw(3) << dst_node_vec[i]);
     }
 
+    std::filesystem::create_directories("output_file/" + std::string(cfg.scenario_name));
     std::ofstream aodv_log_file("output_file/" + std::string(cfg.scenario_name)+"/aodv_" + cfg.scenario_name + "_path.log");
     std::streambuf* const orig_clog_buf = std::clog.rdbuf(aodv_log_file.rdbuf());
 
@@ -528,11 +529,43 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     const double pdr_percent = total_sent_packets ? (static_cast<double>(total_recv_packets) / total_sent_packets) * 100.0
                                                   : 0.0;
     
+    const double data_window_s = (recv_pkt_end_time - recv_pkt_start_time).GetSeconds();
     const double throughput_bps = static_cast<double>(total_recv_packets * packet_size * 8) /
-                                  total_simulation_time.GetSeconds();
+                                  data_window_s;
     const double avg_delay_ms = total_recv_packets ? (static_cast<double>(total_delay_ns) / total_recv_packets) / 1e6
                                                    : 0.0;
     const double max_delay_ms = static_cast<double>(max_delay_ns) / 1e6;
+
+    // Collect total RERR count across all AODV nodes before Destroy().
+    uint32_t total_rerr_sent = 0;
+    if (cfg.routing_method == "aodv")
+    {
+        for (unsigned int i = 0; i < cfg.num_nodes; ++i)
+        {
+            Ptr<Node> node = node_container.Get(i);
+            Ptr<Ipv4RoutingProtocol> routingProto = node->GetObject<Ipv4>()->GetRoutingProtocol();
+            Ptr<aodv::RoutingProtocol> aodvProto = DynamicCast<aodv::RoutingProtocol>(routingProto);
+            if (!aodvProto)
+            {
+                Ptr<Ipv4ListRouting> listRouting = DynamicCast<Ipv4ListRouting>(routingProto);
+                if (listRouting)
+                {
+                    for (uint32_t j = 0; j < listRouting->GetNRoutingProtocols(); ++j)
+                    {
+                        int16_t priority;
+                        aodvProto = DynamicCast<aodv::RoutingProtocol>(
+                            listRouting->GetRoutingProtocol(j, priority));
+                        if (aodvProto) break;
+                    }
+                }
+            }
+            if (aodvProto)
+                total_rerr_sent += aodvProto->GetTotalRerrSent();
+        }
+    }
+
+    // Collect total network TX energy before Destroy().
+    const double total_energy_j = GetTotalNetworkEnergy();
 
     CloseTraceFiles();
     Simulator::Destroy();
@@ -558,8 +591,10 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         run_summary_file << "throughput_bps=" << throughput_bps << "\n";
         run_summary_file << "avg_delay_ms=" << avg_delay_ms << "\n";
         run_summary_file << "max_delay_ms=" << max_delay_ms << "\n";
-        //run_summary_file << "data_transfer_duration_s=" << data_transfer_duration_s << "\n";
+        run_summary_file << "data_window_s=" << data_window_s << "\n";
         run_summary_file << "total_simulation_time_s=" << total_simulation_time.GetSeconds() << "\n";
+        run_summary_file << "total_rerr_sent=" << total_rerr_sent << "\n";
+        run_summary_file << "total_energy_j=" << total_energy_j << "\n";
     }
 
     NS_LOG_INFO("Total received packets / Total send packet : " << total_recv_packets << "/" << total_sent_packets);

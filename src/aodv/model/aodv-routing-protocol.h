@@ -44,7 +44,6 @@
 #include "ns3/grad-pc.h"
 #include "ns3/event-id.h"
 #include "ns3/mac48-address.h"
-#include "ns3/wifi-tx-vector.h"
 #include <map>
 #include <set>
 #include <string>
@@ -190,6 +189,9 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	/// Return true if data-phase ETT measurement is active (i.e. hello phase is over).
 	bool IsDataPhaseActive() const { return m_dataPhaseActive; }
 
+	/// Return the total number of RERR messages sent during the simulation.
+	uint32_t GetTotalRerrSent() const { return m_totalRerrSent; }
+
 	/// Activate data-phase ETT measurement (call when data transfer starts).
 	void ActivateDataPhase();
 
@@ -279,6 +281,8 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	uint16_t m_rreqCount;
 	/// Number of RERRs used for RERR rate control
 	uint16_t m_rerrCount;
+	/// Cumulative total of RERR messages actually sent (never resets)
+	uint32_t m_totalRerrSent;
 	/// Wait time at destination after first RREQ to select lowest cumulative ETT path.
 	Time m_rreqWaitTime;
 	/// Among channels whose ETT is within this multiplier of the minimum ETT,
@@ -288,6 +292,8 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 	bool m_preferLowPowerChannel;
 	/// If false, disable ETT/channel-aware custom routing behavior and fall back to traditional AODV logic.
 	bool m_useEttRouting;
+	/// If false, skip channel-switch attempt on MAC retry threshold; send RERR directly (control group).
+	bool m_enableChannelSwitchOnRetry;
 	/// Enable/disable intermediate-node RREP generation.
 	bool m_enableIntermediateRrep;
 
@@ -454,10 +460,6 @@ class RoutingProtocol : public Ipv4RoutingProtocol
 
 	/// How long a channel stays blacklisted before it can be reconsidered.
 	static const double CHANNEL_BLACKLIST_TIMEOUT_S;
-
-	/// Last observed data TX rate (bps) per channel interface index.
-	/// Updated via MonitorSnifferTx; falls back to PHY base rate when not yet observed.
-
 
 
 

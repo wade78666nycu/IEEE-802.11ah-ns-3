@@ -74,9 +74,6 @@ main(int argc, char* argv[])
                  "ETT tolerance multiplier for preferring lower-power channels, e.g. 1.1, 1.2, 1.5",
                  cfg.channel_selection_ett_tolerance);
     cmd.AddValue("show_log", "show log", cfg.show_log);
-    cmd.AddValue("hello_power_reduction",
-                 "dBm reduction for Hello beacons vs data power (0 = disabled)",
-                 cfg.hello_power_reduction_db);
     cmd.Parse(argc, argv);
 
     ScenarioHooks hooks;

@@ -31,7 +31,7 @@ set_mobility_rectangle(NodeContainer& node_container, const ScenarioConfig&)
 static void
 select_rand_pairs(const ScenarioConfig& cfg, std::vector<unsigned int>& src_node_vec, std::vector<unsigned int>& dst_node_vec)
 {
-    assign_src_dst_pair(cfg.rand_seed, cfg.num_nodes, src_node_vec, dst_node_vec);
+    assign_src_dst_pair(cfg.rand_seed, cfg.num_nodes, src_node_vec, dst_node_vec, cfg.num_flows);
 }
 
 int
@@ -43,7 +43,9 @@ main(int argc, char* argv[])
     cfg.rand_seed = 9;
 
     CommandLine cmd;
+    cmd.AddValue("scenario_name", "output directory / file prefix", cfg.scenario_name);
     cmd.AddValue("num_nodes", "total number of nodes", cfg.num_nodes);
+    cmd.AddValue("num_flows", "number of src-dst flows (0 = use all available for the seed)", cfg.num_flows);
     cmd.AddValue("device_num", "number of devices on each node", cfg.device_num);
     cmd.AddValue("send_packet_num", "numbers of packets to send", cfg.send_packet_num);
     cmd.AddValue("gradpc_type", "method of gradpc to use", cfg.gradpc_type);
@@ -57,14 +59,15 @@ main(int argc, char* argv[])
     cmd.AddValue("prefer_low_power_channel",
                  "set false to disable low-power preference when ETT values are close",
                  cfg.prefer_low_power_channel);
+    cmd.AddValue("enable_channel_switch_on_retry",
+                 "set false to disable channel switching on MAC retry threshold (control group)",
+                 cfg.enable_channel_switch_on_retry);
     cmd.AddValue("channel_selection_ett_tolerance",
                  "ETT tolerance multiplier for preferring lower-power channels, e.g. 1.1, 1.2, 1.5",
                  cfg.channel_selection_ett_tolerance);
     cmd.AddValue("reduce_default", "set to true if channel 1's power can be reduced", cfg.reduce_default_power);
+    cmd.AddValue("data_rate", "data rate per flow, e.g. 30Kbps or 100Kbps", cfg.data_rate_str);
     cmd.AddValue("show_log", "show log", cfg.show_log);
-    cmd.AddValue("hello_power_reduction",
-                 "dBm reduction for Hello beacons vs data power (0 = disabled)",
-                 cfg.hello_power_reduction_db);
     cmd.Parse(argc, argv);
 
     ScenarioHooks hooks;

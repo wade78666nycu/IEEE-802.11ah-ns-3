@@ -5,7 +5,8 @@ void
 assign_src_dst_pair(const int rand_seed,
 					const int num_nodes,
 					std::vector<unsigned int>& src_node_vec,
-					std::vector<unsigned int>& dst_node_vec)
+					std::vector<unsigned int>& dst_node_vec,
+					const unsigned int max_flows)
 {
 	if (rand_seed == 4)
 	{
@@ -30,6 +31,12 @@ assign_src_dst_pair(const int rand_seed,
 	else
 	{
 		NS_ASSERT_MSG(false, "No matching rand seed function found.");
+	}
+
+	if (max_flows > 0 && src_node_vec.size() > max_flows)
+	{
+		src_node_vec.resize(max_flows);
+		dst_node_vec.resize(max_flows);
 	}
 }
 
@@ -217,9 +224,11 @@ seed9_src_dst_pair(const int num_nodes,
 {
 	if (num_nodes >= 100)
 	{
-		// random rectangle with 100 nodes
-		src_node_vec = std::vector<unsigned int>{60, 31, 63, 83, 82, 32, 67};
-		dst_node_vec = std::vector<unsigned int>{1, 44, 81, 10, 95, 84, 8};
+		// random rectangle with 100 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
+		src_node_vec = std::vector<unsigned int>{60, 31, 63, 83, 82, 32, 67,
+		                                         15, 25, 47, 55, 70, 38, 50};
+		dst_node_vec = std::vector<unsigned int>{ 1, 44, 81, 10, 95, 84,  8,
+		                                         75, 90,  7, 35, 20, 88, 97};
 	}
 	else if (num_nodes >= 90)
 	{
