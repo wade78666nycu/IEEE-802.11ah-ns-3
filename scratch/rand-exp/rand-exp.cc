@@ -40,7 +40,7 @@ main(int argc, char* argv[])
     ScenarioConfig cfg;
     cfg.scenario_name = "rand";
     cfg.num_nodes = 100;
-    cfg.rand_seed = 9;
+    cfg.rand_seed = 5;
 
     CommandLine cmd;
     cmd.AddValue("scenario_name", "output directory / file prefix", cfg.scenario_name);

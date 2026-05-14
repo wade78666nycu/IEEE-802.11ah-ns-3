@@ -595,6 +595,9 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         run_summary_file << "total_simulation_time_s=" << total_simulation_time.GetSeconds() << "\n";
         run_summary_file << "total_rerr_sent=" << total_rerr_sent << "\n";
         run_summary_file << "total_energy_j=" << total_energy_j << "\n";
+        const double delivered_bytes = static_cast<double>(total_recv_packets) * packet_size;
+        const double energy_per_byte_j = delivered_bytes > 0 ? total_energy_j / delivered_bytes : 0.0;
+        run_summary_file << "energy_per_byte_j=" << energy_per_byte_j << "\n";
     }
 
     NS_LOG_INFO("Total received packets / Total send packet : " << total_recv_packets << "/" << total_sent_packets);

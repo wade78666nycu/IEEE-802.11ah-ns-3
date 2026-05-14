@@ -1,183 +1,178 @@
 #!/usr/bin/env bash
-# Comparison script: 5 configurations × 2 traffic levels, all cases run in PARALLEL.
-#
-# Each case gets its own scenario_name so outputs don't collide.
-# Results land in: output_file/comparison/{traffic}/{case_key}/
+# Comparison script: 6 configurations × 2 traffic levels × N seeds, all cases run in PARALLEL.
+# Simulations run in per-case temp dirs and are deleted afterwards — no cmp_* dirs left behind.
 #
 # Usage:
-#   ./run_comparison.sh [--seed N] [--debug] [--dry-run]
-#   --seed N    random seed (default: 9)
-#   --debug     use debug build instead of optimized
-#   --dry-run   print commands without running
+#   ./run_comparison.sh [--seeds "4 5 7 9 10"] [--num_nodes 100] [--optimized] [--dry-run]
+#   --seeds "..."     space-separated list of seeds (default: "9", valid: 4 5 7 9 10)
+#   --num_nodes N     number of nodes (default: 100, valid: 30 50 100)
+#   --optimized       use optimized build instead of debug
+#   --dry-run         print commands without running
 
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CASES_ROOT="$ROOT_DIR/output_file/comparison"
+RESULTS_DIR="$ROOT_DIR/output_file/.cmp_results"
 
-SEED=9
+SEEDS="9"
+NUM_NODES=100
 USE_OPTIMIZED=false
 DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --seed)      SEED="$2"; shift 2 ;;
+        --seeds)     SEEDS="$2";     shift 2 ;;
+        --seed)      SEEDS="$2";     shift 2 ;;
+        --num_nodes) NUM_NODES="$2"; shift 2 ;;
         --optimized) USE_OPTIMIZED=true; shift ;;
-        --dry-run)   DRY_RUN=true; shift ;;
+        --dry-run)   DRY_RUN=true;   shift ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
-# Optimized build requires running build-optimize.sh first.
-# Default is debug build which works out of the box.
+REPORT="$ROOT_DIR/output_file/comparison_report_n${NUM_NODES}.txt"
+
 if $USE_OPTIMIZED; then
-    WAF_CMD="./waf --build-profile=optimized"
+    WAF_BUILD="./waf --build-profile=optimized build"
+    BIN="$ROOT_DIR/build/optimized/scratch/rand-exp/rand-exp"
+    LIB_DIR="$ROOT_DIR/build/optimized"
 else
-    WAF_CMD="./waf"
+    WAF_BUILD="./waf build"
+    BIN="$ROOT_DIR/build/scratch/rand-exp/rand-exp"
+    LIB_DIR="$ROOT_DIR/build"
 fi
 
 # ── run one case in background ──────────────────────────────────────────────
 
 run_case_bg() {
-    local traffic="$1"
-    local case_key="$2"
-    local label="$3"
+    local seed="$1" traffic="$2" case_key="$3"
     shift 3
 
-    # unique scenario_name → unique output directory
-    local sname="cmp_${traffic}_${case_key}"
-    local sim_out="$ROOT_DIR/output_file/${sname}"
-    local case_dir="$CASES_ROOT/${traffic}/${case_key}"
-    local log="$case_dir/stdout.log"
+    local sname="cmp_s${seed}_${traffic}_${case_key}"
+    local result_file="$RESULTS_DIR/${seed}_${traffic}_${case_key}"
 
-    mkdir -p "$case_dir"
-
-    echo "  → [$traffic/$case_key] $label"
+    echo "  → [seed$seed/$traffic/$case_key]"
 
     if $DRY_RUN; then
-        echo "    CMD: $WAF_CMD --run='rand-exp' --command=\"%s --scenario_name=$sname $*\""
+        echo "    CMD: $BIN --scenario_name=$sname $*"
         return
     fi
 
     (
-        cd "$ROOT_DIR"
-        $WAF_CMD --run='rand-exp' \
-            --command="%s --scenario_name=$sname $*" \
-            > "$log" 2>&1
+        tmpdir=$(mktemp -d)
+        cd "$tmpdir"
+        LD_LIBRARY_PATH="$LIB_DIR" "$BIN" --scenario_name="$sname" "$@" > /dev/null 2>&1
 
-        # copy outputs from sim dir to case dir
-        if [[ -d "$sim_out" ]]; then
-            cp -f "$sim_out"/* "$case_dir/" 2>/dev/null || true
-        fi
-        echo "  ✓ [$traffic/$case_key] done"
+        summary="$tmpdir/output_file/${sname}/${sname}_run_summary.txt"
+        grep -E "^(pdr_percent|throughput_bps|avg_delay_ms|total_rerr_sent|total_energy_j|energy_per_byte_j)=" \
+            "$summary" 2>/dev/null > "$result_file" || true
+
+        rm -rf "$tmpdir" 2>/dev/null || true
+        echo "  ✓ [seed$seed/$traffic/$case_key] done"
     ) &
 }
 
 # ── summary after all runs ───────────────────────────────────────────────────
 
 extract() { grep "^${2}=" "${1}" 2>/dev/null | cut -d= -f2 || echo "N/A"; }
+fmt() {
+    local val="$1" fmt="$2"
+    [[ "$val" == "N/A" ]] && echo "N/A" || awk "BEGIN{printf \"$fmt\", $val}"
+}
 
 print_summary() {
-    echo ""
-    echo "══════════════════════════════════════════════════════════════════════════════════════════"
-    printf "  %-12s %-28s %8s %10s %10s %8s %10s\n" "Traffic" "Case" "PDR(%)" "Thru(Kbps)" "AvgDly(ms)" "RERR" "Energy(J)"
-    echo "  ──────────────────────────────────────────────────────────────────────────────────────"
+    local seeds_list="$1"
+    local header sep body
 
-    for traffic in light heavy; do
-        for case_key in 01_std_aodv 02_full_power 03_low_power_fixed 04_gradpc 05_gradpc_prefer_low 06_gradpc_no_chswitch; do
-            local summary="$CASES_ROOT/${traffic}/${case_key}/cmp_${traffic}_${case_key}_run_summary.txt"
-            if [[ ! -f "$summary" ]]; then
-                summary=$(ls "$CASES_ROOT/${traffic}/${case_key}"/*_run_summary.txt 2>/dev/null | head -1 || echo "")
-            fi
+    header=$(printf "%-6s %-12s %-28s %8s %10s %10s %8s %10s %12s\n" \
+        "Seed" "Traffic" "Case" "PDR(%)" "Thru(Kbps)" "AvgDly(ms)" "RERR" "Energy(J)" "E/Byte(mJ)")
+    sep="$(printf '%.0s─' {1..104})"
+    body=""
 
-            local pdr thru delay rerr energy
-            pdr=$(extract    "$summary" "pdr_percent")
-            thru=$(extract   "$summary" "throughput_bps")
-            delay=$(extract  "$summary" "avg_delay_ms")
-            rerr=$(extract   "$summary" "total_rerr_sent")
-            energy=$(extract "$summary" "total_energy_j")
+    for seed in $seeds_list; do
+        for traffic in light heavy; do
+            for case_key in 01_std_aodv 02_full_power 03_low_power_fixed 04_gradpc 05_gradpc_prefer_low 06_gradpc_no_chswitch; do
+                local f="$RESULTS_DIR/${seed}_${traffic}_${case_key}"
 
-            if [[ "$thru" != "N/A" ]]; then
-                thru=$(awk "BEGIN{printf \"%.2f\", $thru/1000}")
-            fi
-            if [[ "$energy" != "N/A" ]]; then
-                energy=$(awk "BEGIN{printf \"%.4f\", $energy}")
-            fi
+                local pdr thru delay rerr energy epb
+                pdr=$(fmt    "$(extract "$f" "pdr_percent")"       "%.2f")
+                thru=$(fmt   "$(extract "$f" "throughput_bps")"    "%.2f")
+                delay=$(fmt  "$(extract "$f" "avg_delay_ms")"      "%.2f")
+                rerr=$(extract "$f" "total_rerr_sent")
+                energy=$(fmt "$(extract "$f" "total_energy_j")"    "%.4f")
+                epb=$(fmt    "$(extract "$f" "energy_per_byte_j")" "%.6f")
 
-            printf "  %-12s %-28s %8s %10s %10s %8s %10s\n" "$traffic" "$case_key" "$pdr" "$thru" "$delay" "$rerr" "$energy"
+                # convert bps → Kbps
+                [[ "$thru" != "N/A" ]] && thru=$(awk "BEGIN{printf \"%.2f\", $thru/1000}")
+                # convert J/byte → mJ/byte
+                [[ "$epb"  != "N/A" ]] && epb=$(awk "BEGIN{printf \"%.4f\", $epb*1000}")
+
+                body+=$(printf "%-6s %-12s %-28s %8s %10s %10s %8s %10s %12s\n" \
+                    "$seed" "$traffic" "$case_key" "$pdr" "$thru" "$delay" "$rerr" "$energy" "$epb")
+                body+=$'\n'
+            done
         done
     done
+
+    local report
+    report="$(printf '%s\n%s\n%s\n' "$header" "$sep" "$body")"
+
     echo ""
+    echo "$report"
+    mkdir -p "$(dirname "$REPORT")"
+    echo "$report" > "$REPORT"
+    echo "  Report saved: $REPORT"
+    "$ROOT_DIR/.venv/bin/python3" "$ROOT_DIR/report_to_xlsx.py" "$REPORT" 2>/dev/null || true
+}
+
+# ── launch all cases for one seed ────────────────────────────────────────────
+
+launch_seed() {
+    local seed="$1"
+    local cl="--seed=$seed --num_nodes=$NUM_NODES --num_flows=7  --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=false"
+    local ch="--seed=$seed --num_nodes=$NUM_NODES --num_flows=14 --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=false"
+
+    run_case_bg $seed light "01_std_aodv"          $cl --enable_hello=false --device_num=1
+    run_case_bg $seed light "02_full_power"         $cl --enable_hello=true --enable_power_control=false --tx_power=15
+    run_case_bg $seed light "03_low_power_fixed"    $cl --enable_hello=true --enable_power_control=false --tx_power=8
+    run_case_bg $seed light "04_gradpc"             $cl --enable_hello=true --enable_power_control=true
+    run_case_bg $seed light "05_gradpc_prefer_low"  $cl --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
+    run_case_bg $seed light "06_gradpc_no_chswitch" $cl --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
+
+    run_case_bg $seed heavy "01_std_aodv"          $ch --enable_hello=false --device_num=1
+    run_case_bg $seed heavy "02_full_power"         $ch --enable_hello=true --enable_power_control=false --tx_power=15
+    run_case_bg $seed heavy "03_low_power_fixed"    $ch --enable_hello=true --enable_power_control=false --tx_power=8
+    run_case_bg $seed heavy "04_gradpc"             $ch --enable_hello=true --enable_power_control=true
+    run_case_bg $seed heavy "05_gradpc_prefer_low"  $ch --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
+    run_case_bg $seed heavy "06_gradpc_no_chswitch" $ch --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
 }
 
 # ── main ─────────────────────────────────────────────────────────────────────
 
-mkdir -p "$CASES_ROOT"
-
-COMMON_LIGHT="--seed=$SEED --num_flows=7  --data_rate=30Kbps  --send_packet_num=500  --show_log=false --export_node_info=true"
-COMMON_HEAVY="--seed=$SEED --num_flows=14 --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=true"
-
 BUILD_LABEL=$(if $USE_OPTIMIZED; then echo "optimized"; else echo "debug"; fi)
+TOTAL=$(echo $SEEDS | wc -w)
+
 echo "════════════════════════════════════════════════════════════"
-echo "  Launching all cases in parallel  (build=$BUILD_LABEL, seed=$SEED)"
+echo "  Building $BUILD_LABEL binary..."
+echo "════════════════════════════════════════════════════════════"
+(cd "$ROOT_DIR" && $WAF_BUILD 2>&1) | tail -3
+
+mkdir -p "$RESULTS_DIR"
+
+echo "════════════════════════════════════════════════════════════"
+echo "  Launching $((TOTAL * 12)) simulations in parallel  (seeds=$SEEDS)"
 echo "════════════════════════════════════════════════════════════"
 
-# light traffic
-run_case_bg light "01_std_aodv" \
-    "Standard AODV (single-ch, hop-count)" \
-    $COMMON_LIGHT --enable_hello=false --device_num=1
-
-run_case_bg light "02_full_power" \
-    "Multi-ch ETT, full power 15 dBm" \
-    $COMMON_LIGHT --enable_hello=true --enable_power_control=false --tx_power=15
-
-run_case_bg light "03_low_power_fixed" \
-    "Multi-ch ETT, fixed low power 8 dBm" \
-    $COMMON_LIGHT --enable_hello=true --enable_power_control=false --tx_power=8
-
-run_case_bg light "04_gradpc" \
-    "Multi-ch ETT + GradPC" \
-    $COMMON_LIGHT --enable_hello=true --enable_power_control=true
-
-run_case_bg light "05_gradpc_prefer_low" \
-    "Multi-ch ETT + GradPC + prefer_low_power" \
-    $COMMON_LIGHT --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
-
-run_case_bg light "06_gradpc_no_chswitch" \
-    "Multi-ch ETT + GradPC, no channel-switch on retry (control)" \
-    $COMMON_LIGHT --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
-
-# heavy traffic
-run_case_bg heavy "01_std_aodv" \
-    "Standard AODV (single-ch, hop-count)" \
-    $COMMON_HEAVY --enable_hello=false --device_num=1
-
-run_case_bg heavy "02_full_power" \
-    "Multi-ch ETT, full power 15 dBm" \
-    $COMMON_HEAVY --enable_hello=true --enable_power_control=false --tx_power=15
-
-run_case_bg heavy "03_low_power_fixed" \
-    "Multi-ch ETT, fixed low power 8 dBm" \
-    $COMMON_HEAVY --enable_hello=true --enable_power_control=false --tx_power=8
-
-run_case_bg heavy "04_gradpc" \
-    "Multi-ch ETT + GradPC" \
-    $COMMON_HEAVY --enable_hello=true --enable_power_control=true
-
-run_case_bg heavy "05_gradpc_prefer_low" \
-    "Multi-ch ETT + GradPC + prefer_low_power" \
-    $COMMON_HEAVY --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
-
-run_case_bg heavy "06_gradpc_no_chswitch" \
-    "Multi-ch ETT + GradPC, no channel-switch on retry (control)" \
-    $COMMON_HEAVY --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
+for seed in $SEEDS; do
+    launch_seed "$seed"
+done
 
 if ! $DRY_RUN; then
     echo ""
-    echo "  Waiting for all 12 cases to finish..."
+    echo "  Waiting for all $((TOTAL * 12)) cases to finish..."
     wait
     echo ""
     echo "  All done."
-    print_summary
-    echo "Results: $CASES_ROOT"
+    print_summary "$SEEDS"
+    rm -rf "$RESULTS_DIR"
 fi
