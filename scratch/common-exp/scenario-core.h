@@ -267,7 +267,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     NS_ASSERT_MSG(*max_element(dst_node_vec.begin(), dst_node_vec.end()) < cfg.num_nodes,
                   "invalid destination node id in dst_node_vec.");
 
-    Time total_simulation_time = Seconds(120);
+    Time total_simulation_time = Seconds(75);
     const DataRate data_rate(cfg.data_rate_str);
     Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
     Time hello_beacon_start_time = Seconds(0);
@@ -585,9 +585,14 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         run_summary_file << "total_simulation_time_s=" << total_simulation_time.GetSeconds() << "\n";
         run_summary_file << "total_rerr_sent=" << total_rerr_sent << "\n";
         run_summary_file << "total_energy_j=" << total_energy_j << "\n";
-        const double delivered_bytes = static_cast<double>(total_recv_packets) * packet_size;
-        const double energy_per_byte_j = delivered_bytes > 0 ? total_energy_j / delivered_bytes : 0.0;
-        run_summary_file << "energy_per_byte_j=" << energy_per_byte_j << "\n";
+        // Total DATA TX energy accumulated only within the actual data window
+        // [first data recv, last data recv]. Falls back to the full total when
+        // nothing was received (window undefined).
+        const double window_tx_energy_j =
+            (total_recv_packets > 0 && global_last_recv_ns > global_first_recv_ns)
+                ? GetTotalNetworkEnergyInWindow(global_first_recv_ns, global_last_recv_ns)
+                : total_energy_j;
+        run_summary_file << "window_tx_energy_j=" << window_tx_energy_j << "\n";
     }
 
     NS_LOG_INFO("Total received packets / Total send packet : " << total_recv_packets << "/" << total_sent_packets);

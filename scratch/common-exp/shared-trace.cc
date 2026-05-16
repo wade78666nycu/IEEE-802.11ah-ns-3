@@ -3,16 +3,21 @@
 #include "ns3/hello-beacon.h"
 #include "ns3/yans-wifi-phy.h"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <map>
+#include <vector>
 
 using namespace ns3;
 
 static std::ofstream g_tx_rate_file;
 static std::ofstream g_tx_energy_file;
 static std::map<uint32_t, double> g_node_tx_energy;
+// (tx_time_ns, energy_j) for each DATA transmission, used to sum energy
+// only within the actual data window.
+static std::vector<std::pair<uint64_t, double>> g_tx_energy_events;
 static std::string g_output_prefix = "exp";
 static uint64_t g_mac_short_retry_count = 0;
 static uint64_t g_mac_long_retry_count = 0;
@@ -43,6 +48,7 @@ InitializeTracing(bool enable_tx_rate_trace, bool enable_energy_trace)
         g_tx_energy_file.open(PrefixFile("tx_energy.txt"), std::ios::trunc);
     }
     g_node_tx_energy.clear();
+    g_tx_energy_events.clear();
     g_mac_short_retry_count = 0;
     g_mac_long_retry_count = 0;
     g_mac_final_rts_failed_count = 0;
@@ -97,6 +103,27 @@ TraceTxEnergy(std::string context,
 {
     (void)channelFreqMhz;
     (void)isShortPreamble;
+
+    // Only account DATA-transfer energy. Data packets carry the ASCII marker
+    // "send_ns=" in their payload (see SendPacketApp::SendPacket). Hello
+    // beacons and AODV control frames (RREQ/RREP/RERR) are binary and do not,
+    // so they are skipped here. Note: data and hello both use UDP port 80, so
+    // a port-based filter is not possible — the payload marker is used instead.
+    {
+        const uint32_t pkt_len = packet->GetSize();
+        static const char marker[] = "send_ns=";
+        const size_t mlen = sizeof(marker) - 1;
+        if (pkt_len < mlen)
+        {
+            return;
+        }
+        std::vector<uint8_t> buf(pkt_len);
+        packet->CopyData(buf.data(), pkt_len);
+        if (std::search(buf.begin(), buf.end(), marker, marker + mlen) == buf.end())
+        {
+            return;
+        }
+    }
 
     size_t start = context.find("/NodeList/");
     if (start == std::string::npos)
@@ -163,6 +190,8 @@ TraceTxEnergy(std::string context,
     double tx_energy_joules = power_watts * tx_duration_s;
 
     g_node_tx_energy[node_id] += tx_energy_joules;
+    g_tx_energy_events.emplace_back(
+        static_cast<uint64_t>(Simulator::Now().GetNanoSeconds()), tx_energy_joules);
 
     if (!g_tx_energy_file.is_open())
     {
@@ -335,6 +364,18 @@ GetTotalNetworkEnergy()
     double total = 0.0;
     for (const auto& kv : g_node_tx_energy)
         total += kv.second;
+    return total;
+}
+
+double
+GetTotalNetworkEnergyInWindow(uint64_t start_ns, uint64_t end_ns)
+{
+    double total = 0.0;
+    for (const auto& ev : g_tx_energy_events)
+    {
+        if (ev.first >= start_ns && ev.first <= end_ns)
+            total += ev.second;
+    }
     return total;
 }
 

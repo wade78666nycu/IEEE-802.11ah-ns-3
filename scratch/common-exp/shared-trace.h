@@ -35,6 +35,7 @@ void TraceMacTxFinalRtsFailed(std::string context, Mac48Address address);
 void TraceMacTxFinalDataFailed(std::string context, Mac48Address address);
 
 double GetTotalNetworkEnergy();
+double GetTotalNetworkEnergyInWindow(uint64_t start_ns, uint64_t end_ns);
 void ExportNodePosition(const NodeContainer& node_container);
 void ExportNodePower(const NodeContainer& node_container);
 void ExportEttMatrix(const NodeContainer& node_container);

@@ -117,7 +117,7 @@ SendPacketApp::SendPacket()
         if (((m_packets_sent + 1) % max_packet_num_per_round) == 0)
         {
             Ptr<UniformRandomVariable> rv = CreateObject<UniformRandomVariable>();
-            Time wait_time = Seconds(3.0 + rv->GetValue(0.0, 2.0));
+            Time wait_time = MilliSeconds(1000 + rv->GetValue(0.0, 500));
             Simulator::Schedule(wait_time, &SendPacketApp::ScheduleTx, this);
         }
         else

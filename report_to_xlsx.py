@@ -16,7 +16,7 @@ except ImportError:
 REPORT = Path(__file__).parent / "output_file" / "comparison_report.txt"
 OUTPUT = Path(__file__).parent / "output_file" / "comparison_report.xlsx"
 
-HEADERS = ["Seed", "Traffic", "Case", "PDR(%)", "Thru(Kbps)", "AvgDly(ms)", "RERR", "Energy(J)", "E/Byte(mJ)"]
+HEADERS = ["Seed", "Traffic", "Case", "PDR(%)", "Thru(Kbps)", "AvgDly(ms)", "RERR", "Energy(J)", "ActualWin(s)"]
 
 # colours
 HDR_FILL  = PatternFill("solid", fgColor="2E4057")   # dark blue
@@ -50,7 +50,7 @@ def parse_report(path: Path) -> list[dict]:
                 "AvgDly(ms)": float(parts[5]),
                 "RERR":       int(parts[6]),
                 "Energy(J)":  float(parts[7]),
-                "E/Byte(mJ)": float(parts[8]) if len(parts) > 8 else "N/A",
+                "ActualWin(s)": float(parts[8]) if len(parts) > 8 else "N/A",
             })
         except (ValueError, IndexError):
             continue
@@ -82,7 +82,6 @@ def write_xlsx(rows: list[dict], output: Path):
             cell.alignment = Alignment(horizontal="center" if col != 3 else "left")
             if isinstance(val, float):
                 if key == "Energy(J)":    cell.number_format = "0.0000"
-                elif key == "E/Byte(mJ)": cell.number_format = "0.000000"
                 else:                      cell.number_format = "0.00"
 
     # column widths
