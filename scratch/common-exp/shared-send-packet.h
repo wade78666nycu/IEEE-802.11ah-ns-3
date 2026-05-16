@@ -29,10 +29,6 @@ class SendPacketApp : public Application
                DataRate data_rate);
 
     void Set_max_packet_num_per_round(const unsigned int max_num);
-    // Set tolerance multiplier for ETT-based channel selection (default 1.2).
-    // A channel with higher index (lower power) is preferred when its ETT is
-    // no worse than channel-1 ETT * tolerance.
-    void set_ett_tolerance(double tolerance);
 
     void StartApplication() override;
     void StopApplication() override;

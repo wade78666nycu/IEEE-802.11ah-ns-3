@@ -36,7 +36,6 @@ struct ScenarioConfig
 
     double cca_threshold{-92.0};
     double default_tx_power{15.0};
-    double channel_selection_ett_tolerance{1.1};
     unsigned int rreq_wait_time_ms{200};
 
     std::string data_rate_str{"30Kbps"};
@@ -219,7 +218,6 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         aodv_helper.Set("UseEttRouting", BooleanValue(cfg.enable_hello));
         aodv_helper.Set("PreferLowPowerChannel", BooleanValue(cfg.prefer_low_power_channel));
         aodv_helper.Set("EnableChannelSwitchOnRetry", BooleanValue(cfg.enable_channel_switch_on_retry));
-        aodv_helper.Set("ChannelSelectionEttTolerance", DoubleValue(cfg.channel_selection_ett_tolerance));
         aodv_helper.Set("RreqWaitTime", TimeValue(MilliSeconds(cfg.rreq_wait_time_ms)));
         aodv_helper.Set("EnableIntermediateRrep", BooleanValue(!cfg.enable_hello));
         if (cfg.enable_hello && cfg.enable_power_control)
@@ -284,9 +282,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         {
             std::cout << "[" << cfg.scenario_name << "] " << cfg.routing_method << " hello=on power_control="
                       << (cfg.enable_power_control ? "on" : "off")
-                      << " prefer_low_power=" << (cfg.prefer_low_power_channel ? "on" : "off")
-                      << " ett_tol="
-                      << (cfg.prefer_low_power_channel ? cfg.channel_selection_ett_tolerance : 1.0) << "\n";
+                      << " prefer_low_power=" << (cfg.prefer_low_power_channel ? "on" : "off")<< "\n";
         }
 
         hello_beacon_start_time = Seconds(1.0);
@@ -381,15 +377,6 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                 Simulator::Schedule(Seconds(20.0), &Hello_beacon_App::StopApplication,
                                 PeekPointer(hello_beacon_app));
             }
-            
-            // Data-phase hello cycles: 3s on, 7s off (20-23s, 30-33s, ...)
-            /*for (double t = 30.0; t < total_simulation_time.GetSeconds() - 1.0; t += 20.0)
-            {
-                Simulator::Schedule(Seconds(t), &Hello_beacon_App::StartApplication,
-                                    PeekPointer(hello_beacon_app));
-                Simulator::Schedule(Seconds(t + 8.0), &Hello_beacon_App::StopApplication,
-                                    PeekPointer(hello_beacon_app));
-            }*/
 
             if (cfg.enable_power_control)
             {
@@ -530,8 +517,11 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                                                   : 0.0;
     
     const double data_window_s = (recv_pkt_end_time - recv_pkt_start_time).GetSeconds();
+    const double actual_window_s = (total_recv_packets > 0 && global_last_recv_ns > global_first_recv_ns)
+                                       ? static_cast<double>(global_last_recv_ns - global_first_recv_ns) / 1e9
+                                       : data_window_s;
     const double throughput_bps = static_cast<double>(total_recv_packets * packet_size * 8) /
-                                  data_window_s;
+                                  actual_window_s;
     const double avg_delay_ms = total_recv_packets ? (static_cast<double>(total_delay_ns) / total_recv_packets) / 1e6
                                                    : 0.0;
     const double max_delay_ms = static_cast<double>(max_delay_ns) / 1e6;
@@ -584,7 +574,6 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         run_summary_file << "enable_power_control=" << (cfg.enable_power_control ? "true" : "false") << "\n";
         run_summary_file << "prefer_low_power_channel=" << (cfg.prefer_low_power_channel ? "true" : "false")
                          << "\n";
-        run_summary_file << "channel_selection_ett_tolerance=" << cfg.channel_selection_ett_tolerance << "\n";
         run_summary_file << "total_sent_packets=" << total_sent_packets << "\n";
         run_summary_file << "total_received_packets=" << total_recv_packets << "\n";
         run_summary_file << "pdr_percent=" << pdr_percent << "\n";
@@ -592,6 +581,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         run_summary_file << "avg_delay_ms=" << avg_delay_ms << "\n";
         run_summary_file << "max_delay_ms=" << max_delay_ms << "\n";
         run_summary_file << "data_window_s=" << data_window_s << "\n";
+        run_summary_file << "actual_window_s=" << actual_window_s << "\n";
         run_summary_file << "total_simulation_time_s=" << total_simulation_time.GetSeconds() << "\n";
         run_summary_file << "total_rerr_sent=" << total_rerr_sent << "\n";
         run_summary_file << "total_energy_j=" << total_energy_j << "\n";

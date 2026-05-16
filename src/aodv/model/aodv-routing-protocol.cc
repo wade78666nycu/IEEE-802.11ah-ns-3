@@ -526,9 +526,12 @@ RoutingProtocol::GetBestEttToNeighbor(Ipv4Address neighbor, uint8_t& bestChannel
 		return minEtt;
 	}
 
-	// prefer_low_power_channel=true: discount higher channels so they are
-	// preferred when their raw ETT is comparable to ch1.
-	// ch1 × 1.0 (no discount), ch2 × 0.9, ch3 × 0.8.
+	// prefer_low_power_channel=true: prefer GradPC-adjusted (lower-power) channels over the full-power channel.
+	// device_idx=0 (ifIndex=1): full power 15 dBm, never adjusted by GradPC, used for RREQ flood.
+	// device_idx=1 (ifIndex=2): GradPC adjusted (original neighbor set as input).
+	// device_idx=2 (ifIndex=3): GradPC cascade (device_idx=1's reduced set as input) → lowest power.
+	// Discount lower-power channels so they win when ETT is comparable to the full-power channel.
+	// ifIndex=3 × 0.8 (most preferred, lowest power), ifIndex=2 × 0.9, ifIndex=1 × 1.0 (full power, least preferred).
 	// The returned ETT is always the raw value (not discounted).
 	auto channelDiscount = [](uint32_t ifIndex) -> double {
 		if (ifIndex == 3) return 0.8;

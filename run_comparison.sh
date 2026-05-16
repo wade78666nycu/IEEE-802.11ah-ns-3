@@ -90,8 +90,8 @@ print_summary() {
     body=""
 
     for seed in $seeds_list; do
-        for traffic in light heavy; do
-            for case_key in 01_std_aodv 02_full_power 03_low_power_fixed 04_gradpc 05_gradpc_prefer_low 06_gradpc_no_chswitch; do
+        for traffic in light heavy very_heavy; do
+            for case_key in 01_std_aodv 06_gradpc_no_chswitch 02_full_power 03_low_power_fixed 04_gradpc 05_gradpc_prefer_low; do
                 local f="$RESULTS_DIR/${seed}_${traffic}_${case_key}"
 
                 local pdr thru delay rerr energy epb
@@ -129,8 +129,10 @@ print_summary() {
 
 launch_seed() {
     local seed="$1"
+
     local cl="--seed=$seed --num_nodes=$NUM_NODES --num_flows=7  --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=false"
     local ch="--seed=$seed --num_nodes=$NUM_NODES --num_flows=14 --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=false"
+    local cv="--seed=$seed --num_nodes=$NUM_NODES --num_flows=20 --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=false"
 
     run_case_bg $seed light "01_std_aodv"          $cl --enable_hello=false --device_num=1
     run_case_bg $seed light "02_full_power"         $cl --enable_hello=true --enable_power_control=false --tx_power=15
@@ -145,12 +147,22 @@ launch_seed() {
     run_case_bg $seed heavy "04_gradpc"             $ch --enable_hello=true --enable_power_control=true
     run_case_bg $seed heavy "05_gradpc_prefer_low"  $ch --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
     run_case_bg $seed heavy "06_gradpc_no_chswitch" $ch --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
+
+    if [[ "$NUM_NODES" -ge 100 ]]; then
+        run_case_bg $seed very_heavy "01_std_aodv"          $cv --enable_hello=false --device_num=1
+        run_case_bg $seed very_heavy "02_full_power"         $cv --enable_hello=true --enable_power_control=false --tx_power=15
+        run_case_bg $seed very_heavy "03_low_power_fixed"    $cv --enable_hello=true --enable_power_control=false --tx_power=8
+        run_case_bg $seed very_heavy "04_gradpc"             $cv --enable_hello=true --enable_power_control=true
+        run_case_bg $seed very_heavy "05_gradpc_prefer_low"  $cv --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
+        run_case_bg $seed very_heavy "06_gradpc_no_chswitch" $cv --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
+    fi
 }
 
 # ── main ─────────────────────────────────────────────────────────────────────
 
 BUILD_LABEL=$(if $USE_OPTIMIZED; then echo "optimized"; else echo "debug"; fi)
 TOTAL=$(echo $SEEDS | wc -w)
+CASES_PER_SEED=$(( NUM_NODES >= 100 ? 18 : 12 ))
 
 echo "════════════════════════════════════════════════════════════"
 echo "  Building $BUILD_LABEL binary..."
@@ -160,7 +172,7 @@ echo "════════════════════════�
 mkdir -p "$RESULTS_DIR"
 
 echo "════════════════════════════════════════════════════════════"
-echo "  Launching $((TOTAL * 12)) simulations in parallel  (seeds=$SEEDS)"
+echo "  Launching $((TOTAL * CASES_PER_SEED)) simulations in parallel  (seeds=$SEEDS)"
 echo "════════════════════════════════════════════════════════════"
 
 for seed in $SEEDS; do

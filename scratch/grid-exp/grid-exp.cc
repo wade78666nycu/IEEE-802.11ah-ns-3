@@ -70,9 +70,7 @@ main(int argc, char* argv[])
     cmd.AddValue("prefer_low_power_channel",
                  "set false to disable low-power preference when ETT values are close",
                  cfg.prefer_low_power_channel);
-    cmd.AddValue("channel_selection_ett_tolerance",
-                 "ETT tolerance multiplier for preferring lower-power channels, e.g. 1.1, 1.2, 1.5",
-                 cfg.channel_selection_ett_tolerance);
+    
     cmd.AddValue("show_log", "show log", cfg.show_log);
     cmd.Parse(argc, argv);
 

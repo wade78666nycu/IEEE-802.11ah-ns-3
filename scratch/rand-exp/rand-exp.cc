@@ -40,7 +40,7 @@ main(int argc, char* argv[])
     ScenarioConfig cfg;
     cfg.scenario_name = "rand";
     cfg.num_nodes = 100;
-    cfg.rand_seed = 5;
+    cfg.rand_seed = 7;
 
     CommandLine cmd;
     cmd.AddValue("scenario_name", "output directory / file prefix", cfg.scenario_name);
@@ -62,9 +62,7 @@ main(int argc, char* argv[])
     cmd.AddValue("enable_channel_switch_on_retry",
                  "set false to disable channel switching on MAC retry threshold (control group)",
                  cfg.enable_channel_switch_on_retry);
-    cmd.AddValue("channel_selection_ett_tolerance",
-                 "ETT tolerance multiplier for preferring lower-power channels, e.g. 1.1, 1.2, 1.5",
-                 cfg.channel_selection_ett_tolerance);
+    
     cmd.AddValue("reduce_default", "set to true if channel 1's power can be reduced", cfg.reduce_default_power);
     cmd.AddValue("data_rate", "data rate per flow, e.g. 30Kbps or 100Kbps", cfg.data_rate_str);
     cmd.AddValue("show_log", "show log", cfg.show_log);
