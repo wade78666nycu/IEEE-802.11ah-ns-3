@@ -128,9 +128,14 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
 
     std::vector<NetDeviceContainer> device_vec(cfg.device_num);
 
+    // Two power levels so the GradPC "send-to-non-neighbor" recovery path works:
+    //   level 0 = TxPowerStart : lowered per-device by GradPC (normal data / hello)
+    //   level 1 = TxPowerEnd   : stays at full power, used by gradpc-wifi-manager
+    //                            when forwarding to a node outside the reduced
+    //                            neighbor set (IsNeighborTag == false).
     const double TxPowerStart{cfg.default_tx_power};
-    const double TxPowerEnd = TxPowerStart;
-    const int power_levels{1};
+    const double TxPowerEnd = cfg.default_tx_power; // full-power recovery level (never lowered)
+    const int power_levels{2};
     const double freq{920.0};
     const double path_loss_exponent{2.5};
     const double ref_distance{1.0};
@@ -267,14 +272,14 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     NS_ASSERT_MSG(*max_element(dst_node_vec.begin(), dst_node_vec.end()) < cfg.num_nodes,
                   "invalid destination node id in dst_node_vec.");
 
-    Time total_simulation_time = Seconds(75);
+    Time total_simulation_time = Seconds(80);
     const DataRate data_rate(cfg.data_rate_str);
     Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable>();
     Time hello_beacon_start_time = Seconds(0);
     Time hello_beacon_stop_time = Seconds(0);
     Time grad_pc_start_time = Seconds(0);
     Time grad_pc_stop_time = Seconds(0);
-    Time data_phase_start_time = Seconds(0.01);
+    Time data_phase_start_time = Seconds(21.0);
 
     if (cfg.enable_hello)
     {
@@ -288,23 +293,29 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         hello_beacon_start_time = Seconds(1.0);
         hello_beacon_stop_time = total_simulation_time - Seconds(1.0);
 
-        if (cfg.enable_power_control)
-        {
-            // Phase 1: Hello at full power (1s-9s)
-            // Phase 2: GradPC adjusts power (10s-11s)
-            // Phase 3: Hello at new power levels for ETT re-measurement (12s-20s)
-            // Data transmission starts at 21s
-            grad_pc_start_time = Seconds(10.0);
-            grad_pc_stop_time = Seconds(11.0);
-            data_phase_start_time = Seconds(21.0);
-        }
-        else
-        {
-            // Hello warmup (1s-9s), data starts at 10s
-            data_phase_start_time = Seconds(10.0);
-        }
+        // Phase 1: Hello at full power (1s-9s)
+        // Phase 2: GradPC adjusts power (10s-11s; only applied when power control is enabled)
+        // Phase 3: Hello for ETT re-measurement (12s-20s) — runs for ALL cases
+        // Data transmission starts at 21s for ALL cases (after the 2nd hello round),
+        // so the always-on 2nd hello round never overlaps the data phase.
+        grad_pc_start_time = Seconds(10.0);
+        grad_pc_stop_time = Seconds(11.0);
+        data_phase_start_time = Seconds(21.0);
 
-        Time hello_interval = MilliSeconds(80.0);
+        // ── Density-aware hello scheduling ───────────────────────────────
+        // Hello channel load grows with node count; scale the inter-round
+        // period with N so the 8 s measurement phase does not self-saturate.
+        //   T_round = clamp(5*N, 200, 500) ms
+        //   interval = T_round/2, backoff ~ U{0..T_round/10}*10ms  (mean = T_round/2,
+        //   span [0, T_round] for full desync) ⇒ mean(interval+backoff) = T_round.
+        //   8 s phase ⇒ ~floor(8000/T_round) samples per channel (≥16 even at N=100).
+        const unsigned int hello_slot_ms = 10;
+        unsigned int t_round_ms = 5u * cfg.num_nodes;
+        t_round_ms = std::min(500u, std::max(200u, t_round_ms));
+        const unsigned int hello_max_backoff_slot = t_round_ms / hello_slot_ms;
+        const unsigned int hello_min_backoff_slot = 0;
+        const unsigned int hello_max_packet_count = 8000u / t_round_ms + 4u;
+        Time hello_interval = MilliSeconds(static_cast<double>(t_round_ms) / 2.0);
         const float extra_tx_distance{150.0};
 
         std::vector<short> gradPC_func_vec;
@@ -353,14 +364,10 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
             Ptr<Hello_beacon_App> hello_beacon_app = CreateObject<Hello_beacon_App>();
             hello_beacon_app->set_data_rate(data_rate);
             hello_beacon_app->set_hello_interval(hello_interval);
-            // Backoff: max 16 slots × 10ms = 160ms, avg 80ms.
-            // Effective inter-beacon interval: 80ms (interval) + 80ms (avg backoff) = ~160ms.
-            // In an 8-second measurement phase: ~50 beacons per node → ~17 per channel (3 ch).
-            const unsigned int max_backoff_slot = 16;
-            const unsigned int min_backoff_slot = 0;
-            hello_beacon_app->set_backoff_limit(max_backoff_slot, min_backoff_slot);
-            hello_beacon_app->set_backoff_slot_time(Time("10ms"));
-            hello_beacon_app->set_max_packet_count(50);
+            // Density-aware backoff/count (computed once above from cfg.num_nodes).
+            hello_beacon_app->set_backoff_limit(hello_max_backoff_slot, hello_min_backoff_slot);
+            hello_beacon_app->set_backoff_slot_time(MilliSeconds(hello_slot_ms));
+            hello_beacon_app->set_max_packet_count(hello_max_packet_count);
             hello_beacon_app->run_interval = Seconds(0);   // disable auto-cycling
             hello_beacon_app->wait_interval = Seconds(0);
             hello_beacon_app->SetStartTime(hello_beacon_start_time);  // 1s
@@ -370,13 +377,12 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
             // Explicit phase scheduling: stop first warmup at 9s
             Simulator::Schedule(Seconds(9.0), &Hello_beacon_App::StopApplication,
                                 PeekPointer(hello_beacon_app));
-            // Restart hello at 12s (after GradPC at 10s-11s) for ETT re-measurement
-            if(cfg.enable_power_control){
-                Simulator::Schedule(Seconds(12.0), &Hello_beacon_App::StartApplication,
+            // Restart hello at 12s (after GradPC at 10s-11s) for ETT re-measurement.
+            // Always run the second round (12s-20s), regardless of power control.
+            Simulator::Schedule(Seconds(12.0), &Hello_beacon_App::StartApplication,
                                 PeekPointer(hello_beacon_app));
-                Simulator::Schedule(Seconds(20.0), &Hello_beacon_App::StopApplication,
+            Simulator::Schedule(Seconds(20.0), &Hello_beacon_App::StopApplication,
                                 PeekPointer(hello_beacon_app));
-            }
 
             if (cfg.enable_power_control)
             {
@@ -405,7 +411,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         hooks.setup_interferers(node_container, cfg);
     }
 
-    Time recv_pkt_start_time = cfg.enable_hello ? data_phase_start_time : Seconds(1);
+    Time recv_pkt_start_time =data_phase_start_time;
     Time recv_pkt_end_time = total_simulation_time - Seconds(1);
     Time send_pkt_end_time = total_simulation_time - Seconds(2);
     double min_send_pkt_start_time = recv_pkt_start_time.GetSeconds();
@@ -517,11 +523,11 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                                                   : 0.0;
     
     const double data_window_s = (recv_pkt_end_time - recv_pkt_start_time).GetSeconds();
-    const double actual_window_s = (total_recv_packets > 0 && global_last_recv_ns > global_first_recv_ns)
+    /*const double actual_window_s = (total_recv_packets > 0 && global_last_recv_ns > global_first_recv_ns)
                                        ? static_cast<double>(global_last_recv_ns - global_first_recv_ns) / 1e9
-                                       : data_window_s;
+                                       : data_window_s;*/
     const double throughput_bps = static_cast<double>(total_recv_packets * packet_size * 8) /
-                                  actual_window_s;
+                                  data_window_s;
     const double avg_delay_ms = total_recv_packets ? (static_cast<double>(total_delay_ns) / total_recv_packets) / 1e6
                                                    : 0.0;
     const double max_delay_ms = static_cast<double>(max_delay_ns) / 1e6;
@@ -581,18 +587,12 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         run_summary_file << "avg_delay_ms=" << avg_delay_ms << "\n";
         run_summary_file << "max_delay_ms=" << max_delay_ms << "\n";
         run_summary_file << "data_window_s=" << data_window_s << "\n";
-        run_summary_file << "actual_window_s=" << actual_window_s << "\n";
+        // run_summary_file << "actual_window_s=" << actual_window_s << "\n";
         run_summary_file << "total_simulation_time_s=" << total_simulation_time.GetSeconds() << "\n";
         run_summary_file << "total_rerr_sent=" << total_rerr_sent << "\n";
+        // Whole-simulation network TX energy: includes data, hello beacons
+        // and AODV control (RREQ/RREP/RERR).
         run_summary_file << "total_energy_j=" << total_energy_j << "\n";
-        // Total DATA TX energy accumulated only within the actual data window
-        // [first data recv, last data recv]. Falls back to the full total when
-        // nothing was received (window undefined).
-        const double window_tx_energy_j =
-            (total_recv_packets > 0 && global_last_recv_ns > global_first_recv_ns)
-                ? GetTotalNetworkEnergyInWindow(global_first_recv_ns, global_last_recv_ns)
-                : total_energy_j;
-        run_summary_file << "window_tx_energy_j=" << window_tx_energy_j << "\n";
     }
 
     NS_LOG_INFO("Total received packets / Total send packet : " << total_recv_packets << "/" << total_sent_packets);

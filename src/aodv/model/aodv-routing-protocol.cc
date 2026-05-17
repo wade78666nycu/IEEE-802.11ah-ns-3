@@ -140,7 +140,7 @@ NS_OBJECT_ENSURE_REGISTERED(DeferredRouteOutputTag);
 
 // Channel blacklist timeout: how long a channel stays blacklisted (seconds).
 // Uses same order of magnitude as AODV BlackListTimeout (5.6s).
-const double RoutingProtocol::CHANNEL_BLACKLIST_TIMEOUT_S = 5.0;
+const double RoutingProtocol::CHANNEL_BLACKLIST_TIMEOUT_S = 2.0;
 
 //-----------------------------------------------------------------------------
 RoutingProtocol::RoutingProtocol()

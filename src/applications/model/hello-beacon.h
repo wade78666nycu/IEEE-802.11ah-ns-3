@@ -114,7 +114,7 @@ class Application;
 	    // Key = (ifIndex), inner key = neighbor_id.
 	    std::vector<std::map<uint32_t, double>> m_ett_override_by_if;
 	    std::vector<std::map<uint32_t, Time>>   m_ett_override_time_by_if;
-	    static constexpr double ETT_OVERRIDE_TIMEOUT_S = 10.0;
+	    static constexpr double ETT_OVERRIDE_TIMEOUT_S = 5.0;
 
 	    // Per-instance RNG for hello backoff — avoids shared-state ordering bias.
 	    Ptr<UniformRandomVariable> m_uv;

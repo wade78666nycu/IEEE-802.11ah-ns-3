@@ -64,7 +64,7 @@ run_case_bg() {
         LD_LIBRARY_PATH="$LIB_DIR" "$BIN" --scenario_name="$sname" "$@" > /dev/null 2>&1
 
         summary="$tmpdir/output_file/${sname}/${sname}_run_summary.txt"
-        grep -E "^(pdr_percent|throughput_bps|avg_delay_ms|total_rerr_sent|window_tx_energy_j|actual_window_s)=" \
+        grep -E "^(pdr_percent|throughput_bps|avg_delay_ms|total_rerr_sent|total_energy_j|data_window_s)=" \
             "$summary" 2>/dev/null > "$result_file" || true
 
         rm -rf "$tmpdir" 2>/dev/null || true
@@ -85,12 +85,12 @@ print_summary() {
     local header sep body
 
     header=$(printf "%-6s %-12s %-28s %8s %10s %10s %8s %10s %12s\n" \
-        "Seed" "Traffic" "Case" "PDR(%)" "Thru(Kbps)" "AvgDly(ms)" "RERR" "Energy(J)" "ActualWin(s)")
+        "Seed" "Traffic" "Case" "PDR(%)" "Thru(Kbps)" "AvgDly(ms)" "RERR" "Energy(J)" "DataWin(s)")
     sep="$(printf '%.0s─' {1..104})"
     body=""
 
     for seed in $seeds_list; do
-        for traffic in light heavy very_heavy; do
+        for traffic in light heavy; do
             for case_key in 01_std_aodv 03_full_power_no_chswitch 06_gradpc_no_chswitch 02_full_power 04_gradpc 05_gradpc_prefer_low; do
                 local f="$RESULTS_DIR/${seed}_${traffic}_${case_key}"
 
@@ -99,8 +99,8 @@ print_summary() {
                 thru=$(fmt   "$(extract "$f" "throughput_bps")"          "%.2f")
                 delay=$(fmt  "$(extract "$f" "avg_delay_ms")"            "%.2f")
                 rerr=$(extract "$f" "total_rerr_sent")
-                epp=$(fmt    "$(extract "$f" "window_tx_energy_j")"      "%.4f")
-                actwin=$(fmt "$(extract "$f" "actual_window_s")"         "%.2f")
+                epp=$(fmt    "$(extract "$f" "total_energy_j")"          "%.4f")
+                actwin=$(fmt "$(extract "$f" "data_window_s")"         "%.2f")
 
                 # convert bps → Kbps
                 [[ "$thru" != "N/A" ]] && thru=$(awk "BEGIN{printf \"%.2f\", $thru/1000}")
@@ -130,30 +130,21 @@ launch_seed() {
 
     local cl="--seed=$seed --num_nodes=$NUM_NODES --num_flows=7  --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=false"
     local ch="--seed=$seed --num_nodes=$NUM_NODES --num_flows=14 --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=false"
-    local cv="--seed=$seed --num_nodes=$NUM_NODES --num_flows=20 --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=false"
 
     run_case_bg $seed light "01_std_aodv"          $cl --enable_hello=false --device_num=1
-    run_case_bg $seed light "02_full_power"         $cl --enable_hello=true --enable_power_control=false --tx_power=15
-    run_case_bg $seed light "03_full_power_no_chswitch" $cl --enable_hello=true --enable_power_control=false --tx_power=15 --enable_channel_switch_on_retry=false
+    run_case_bg $seed light "02_full_power"         $cl --enable_hello=true --enable_power_control=false --tx_power=12
+    run_case_bg $seed light "03_full_power_no_chswitch" $cl --enable_hello=true --enable_power_control=false --tx_power=12 --enable_channel_switch_on_retry=false
     run_case_bg $seed light "04_gradpc"             $cl --enable_hello=true --enable_power_control=true
     run_case_bg $seed light "05_gradpc_prefer_low"  $cl --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
     run_case_bg $seed light "06_gradpc_no_chswitch" $cl --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
 
     run_case_bg $seed heavy "01_std_aodv"          $ch --enable_hello=false --device_num=1
-    run_case_bg $seed heavy "02_full_power"         $ch --enable_hello=true --enable_power_control=false --tx_power=15
-    run_case_bg $seed heavy "03_full_power_no_chswitch" $ch --enable_hello=true --enable_power_control=false --tx_power=15 --enable_channel_switch_on_retry=false
+    run_case_bg $seed heavy "02_full_power"         $ch --enable_hello=true --enable_power_control=false --tx_power=12
+    run_case_bg $seed heavy "03_full_power_no_chswitch" $ch --enable_hello=true --enable_power_control=false --tx_power=12 --enable_channel_switch_on_retry=false
     run_case_bg $seed heavy "04_gradpc"             $ch --enable_hello=true --enable_power_control=true
     run_case_bg $seed heavy "05_gradpc_prefer_low"  $ch --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
     run_case_bg $seed heavy "06_gradpc_no_chswitch" $ch --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
-
-    if [[ "$NUM_NODES" -ge 100 ]]; then
-        run_case_bg $seed very_heavy "01_std_aodv"          $cv --enable_hello=false --device_num=1
-        run_case_bg $seed very_heavy "02_full_power"         $cv --enable_hello=true --enable_power_control=false --tx_power=15
-        run_case_bg $seed very_heavy "03_full_power_no_chswitch" $cv --enable_hello=true --enable_power_control=false --tx_power=15 --enable_channel_switch_on_retry=false
-        run_case_bg $seed very_heavy "04_gradpc"             $cv --enable_hello=true --enable_power_control=true
-        run_case_bg $seed very_heavy "05_gradpc_prefer_low"  $cv --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
-        run_case_bg $seed very_heavy "06_gradpc_no_chswitch" $cv --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
-    fi
+ 
 }
 
 # ── main ─────────────────────────────────────────────────────────────────────
@@ -179,7 +170,7 @@ done
 
 if ! $DRY_RUN; then
     echo ""
-    echo "  Waiting for all $((TOTAL * 12)) cases to finish..."
+    echo "  Waiting for all cases to finish..."
     wait
     echo ""
     echo "  All done."

@@ -80,10 +80,10 @@ seed4_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 50)
 	{
 		// random rectangle with 50 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{38, 22, 37, 21, 16, 49, 44,
-		                                         48, 40, 41,  7, 13, 32, 29};
-		dst_node_vec = std::vector<unsigned int>{15,  0, 24, 39, 42, 26, 12,
-		                                          4, 36, 14,  6, 27,  3, 45};
+		src_node_vec = std::vector<unsigned int>{ 0,  3, 36, 20, 38, 49, 13,
+		                                         11, 37, 33,  9,  8, 10, 34};
+		dst_node_vec = std::vector<unsigned int>{35, 12, 19,  6, 15, 39, 27,
+		                                         47, 42, 30, 26, 46,  7, 28};
 	}
 	else if (num_nodes >= 40)
 	{
@@ -210,10 +210,10 @@ seed7_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 50)
 	{
 		// random rectangle with 50 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{24, 35, 14, 31, 10, 48, 11,
-		                                         16, 28, 29, 42, 38, 30,  8};
-		dst_node_vec = std::vector<unsigned int>{17, 47,  0, 21, 36, 45, 43,
-		                                         32,  1, 46, 39, 41, 49, 40};
+		src_node_vec = std::vector<unsigned int>{49, 21, 14, 39, 32, 45,  4,
+		                                         23, 46, 15, 17,  7,  2,  0};
+		dst_node_vec = std::vector<unsigned int>{38,  1,  8, 36, 29, 18,  3,
+		                                         13, 31, 25, 12, 16, 22, 28};
 	}
 	else if (num_nodes >= 40)
 	{
@@ -340,10 +340,10 @@ seed10_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 50)
 	{
 		// random rectangle with 50 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{ 6, 45,  5, 26,  3, 23, 13,
-		                                         25, 46, 37, 10, 24, 14, 42};
-		dst_node_vec = std::vector<unsigned int>{16,  2, 49, 43, 35, 40, 38,
-		                                          0, 34, 12, 21,  9, 48, 41};
+		src_node_vec = std::vector<unsigned int>{ 0, 27,  6, 22, 38, 37,  1,
+		                                         19, 44, 29, 16, 41, 13,  5};
+		dst_node_vec = std::vector<unsigned int>{43, 25, 39, 23, 47,  9, 32,
+		                                         30, 42, 28, 36,  3, 34, 15};
 	}
 	else if (num_nodes >= 40)
 	{

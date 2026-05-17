@@ -379,10 +379,10 @@ GradPC_App::set_tx_power(float tx_power_dBm, const unsigned int device_idx)
         tx_power_valid = false; // indicate it was adjusted
     }
 
-    // With TxPowerLevels=1, both Start and End must be kept in sync so the
-    // single power level equals the GradPC-computed value.
+    // Only lower level 0 (TxPowerStart). TxPowerEnd is the fixed full-power
+    // level 1 reserved for the gradpc-wifi-manager non-neighbor recovery path,
+    // so it must NOT be reduced here.
     wifi_phy->SetTxPowerStart(tx_power_dBm);
-    wifi_phy->SetTxPowerEnd(tx_power_dBm);
     return tx_power_valid;
 }
 
