@@ -30,12 +30,19 @@ struct ScenarioConfig
     unsigned int num_flows{0};   // 0 = use all available pairs for the seed
     unsigned int device_num{3};
     unsigned int send_packet_num{500};
+    // Packets sent back-to-back (at data_rate spacing) before a ~1-1.5 s pause.
+    // Set very large to disable the pause and offer continuous CBR — needed to
+    // drive the network into saturation for spatial-reuse experiments.
+    unsigned int max_packet_num_per_round{50};
     unsigned int gradpc_type{1};
     unsigned int rx_noise_figure{7};
     int rand_seed{2};
 
     double cca_threshold{-92.0};
     double default_tx_power{15.0};
+    // Extra reach (m) GradPC adds on top of its computed neighbor distance.
+    // Smaller = more aggressive power reduction = smaller carrier-sense range.
+    double extra_tx_distance{150.0};
     unsigned int rreq_wait_time_ms{200};
 
     std::string data_rate_str{"30Kbps"};
@@ -147,16 +154,16 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
     {
         YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
         
-        /*if(i==2){
+        /*if(i==0||i==1){
             Wifiphy_Setting(wifiPhy,
                         freq,
                         TxPowerStart,
                         TxPowerEnd,
                         power_levels,
-                        20,
+                        25,
                         cfg.cca_threshold);
-        }*/
-        //else{
+        }
+        else{*/
             Wifiphy_Setting(wifiPhy,
                             freq,
                             TxPowerStart,
@@ -164,7 +171,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
                             power_levels,
                             cfg.rx_noise_figure,
                             cfg.cca_threshold);
-        //  }
+          //}
         YansWifiChannelHelper wifiChannel;
         /*if(i==0)path_loss_exponent=2.6;
         else path_loss_exponent=2.5;*/
@@ -225,6 +232,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         aodv_helper.Set("EnableChannelSwitchOnRetry", BooleanValue(cfg.enable_channel_switch_on_retry));
         aodv_helper.Set("RreqWaitTime", TimeValue(MilliSeconds(cfg.rreq_wait_time_ms)));
         aodv_helper.Set("EnableIntermediateRrep", BooleanValue(!cfg.enable_hello));
+        //aodv_helper.Set("EnableIntermediateRrep", BooleanValue(true));
         if (cfg.enable_hello && cfg.enable_power_control)
         {
             aodv_helper.Set("GradPCAppIdx", IntegerValue(1));
@@ -259,7 +267,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         ipv4_generator.NextNetwork(mask);
     }
 
-    const unsigned int max_packet_num_per_round{50};
+    const unsigned int max_packet_num_per_round{cfg.max_packet_num_per_round};
     const unsigned int packet_size{256};
 
     const unsigned int src_port_num{9};
@@ -316,7 +324,7 @@ RunScenario(const ScenarioConfig& cfg, const ScenarioHooks& hooks)
         const unsigned int hello_min_backoff_slot = 0;
         const unsigned int hello_max_packet_count = 8000u / t_round_ms + 4u;
         Time hello_interval = MilliSeconds(static_cast<double>(t_round_ms) / 2.0);
-        const float extra_tx_distance{150.0};
+        const float extra_tx_distance{static_cast<float>(cfg.extra_tx_distance)};
 
         std::vector<short> gradPC_func_vec;
         if (cfg.enable_power_control)

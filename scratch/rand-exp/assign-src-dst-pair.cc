@@ -80,10 +80,10 @@ seed4_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 50)
 	{
 		// random rectangle with 50 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{ 0,  3, 36, 20, 38, 49, 13,
-		                                         11, 37, 33,  9,  8, 10, 34};
-		dst_node_vec = std::vector<unsigned int>{35, 12, 19,  6, 15, 39, 27,
-		                                         47, 42, 30, 26, 46,  7, 28};
+		src_node_vec = std::vector<unsigned int>{36,  2, 20,  5,  7,  4, 37,
+		                                         30, 33, 13, 12, 39, 26, 24};
+		dst_node_vec = std::vector<unsigned int>{ 3, 40, 17, 10, 19, 43, 32,
+		                                         22, 18, 23, 34,  6, 31, 28};
 	}
 	else if (num_nodes >= 40)
 	{
@@ -94,10 +94,10 @@ seed4_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 30)
 	{
 		// random rectangle with 30 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{18, 24,  6, 13, 10, 19, 20,
-		                                         27, 11, 16, 21, 26,  5, 14};
-		dst_node_vec = std::vector<unsigned int>{ 0,  2,  3,  9, 12, 25, 28,
-		                                          8, 23, 29,  1,  7, 22, 17};
+		src_node_vec = std::vector<unsigned int>{ 3,  7, 12, 10, 23, 14, 13,
+		                                          5, 26, 20, 28, 17, 11,  9};
+		dst_node_vec = std::vector<unsigned int>{19,  0,  1, 18,  8,  6,  4,
+		                                         24,  2, 16, 21, 22, 25, 15};
 	}
 	else
 	{
@@ -145,10 +145,10 @@ seed5_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 50)
 	{
 		// random rectangle with 50 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{24,  7, 39, 16, 44,  1, 32,
-		                                         48, 13, 27, 40,  5, 19, 35};
-		dst_node_vec = std::vector<unsigned int>{46, 30, 11, 42,  8, 22, 17,
-		                                          3, 36, 49, 14, 28, 43,  0};
+		src_node_vec = std::vector<unsigned int>{19,  1, 37, 25, 16, 15, 35,
+		                                         38, 18,  5, 33,  6, 43,  7};
+		dst_node_vec = std::vector<unsigned int>{14,  2, 22, 40,  3, 23, 10,
+		                                         42, 17,  9, 47, 39, 41, 31};
 	}
 	else if (num_nodes >= 40)
 	{
@@ -159,10 +159,10 @@ seed5_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 30)
 	{
 		// random rectangle with 30 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{ 2, 19, 11, 26,  7, 14, 28,
-		                                          4, 23,  9, 17,  0, 13, 21};
-		dst_node_vec = std::vector<unsigned int>{15,  6, 24,  3, 20, 29, 10,
-		                                         27, 12, 25,  1, 18,  8,  5};
+		src_node_vec = std::vector<unsigned int>{11, 28,  9, 13,  1, 15, 17,
+		                                         19, 14, 22, 24, 26, 23, 20};
+		dst_node_vec = std::vector<unsigned int>{ 6,  5, 10, 27,  4,  0, 29,
+		                                          2, 21, 25,  3, 12,  7, 16};
 	}
 	else
 	{
@@ -210,10 +210,10 @@ seed7_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 50)
 	{
 		// random rectangle with 50 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{49, 21, 14, 39, 32, 45,  4,
-		                                         23, 46, 15, 17,  7,  2,  0};
-		dst_node_vec = std::vector<unsigned int>{38,  1,  8, 36, 29, 18,  3,
-		                                         13, 31, 25, 12, 16, 22, 28};
+		src_node_vec = std::vector<unsigned int>{ 7,  8, 17, 14,  4, 16, 32,
+		                                         41, 20, 24, 27, 36, 28, 33};
+		dst_node_vec = std::vector<unsigned int>{40, 34, 44, 30, 48, 46, 35,
+		                                          2, 25, 19,  3, 47, 21, 39};
 	}
 	else if (num_nodes >= 40)
 	{
@@ -224,10 +224,10 @@ seed7_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 30)
 	{
 		// random rectangle with 30 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{21,  5, 15, 29,  7, 28,  9,
-		                                          0, 13,  8, 27, 22, 26, 14};
-		dst_node_vec = std::vector<unsigned int>{ 2, 10, 23, 12, 19, 25, 17,
-		                                         18, 11,  6,  3, 16, 24,  4};
+		src_node_vec = std::vector<unsigned int>{ 4, 19,  5,  8, 16, 21, 26,
+		                                         12,  0,  2, 23, 28, 17, 20};
+		dst_node_vec = std::vector<unsigned int>{18,  9, 13, 24, 25, 15,  6,
+		                                         11,  3, 14, 29, 27, 22,  1};
 	}
 	else
 	{
@@ -275,10 +275,10 @@ seed9_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 50)
 	{
 		// random rectangle with 50 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{45, 36, 26, 14, 42, 25, 19,
-		                                         20, 31, 22, 33, 15, 44, 46};
-		dst_node_vec = std::vector<unsigned int>{34, 21, 18,  5, 17, 11, 12,
-		                                         38, 27, 37, 16, 39,  9,  1};
+		src_node_vec = std::vector<unsigned int>{42, 33, 27, 21,  0, 31, 26,
+		                                          2, 46, 37,  8, 41, 13, 43};
+		dst_node_vec = std::vector<unsigned int>{17, 35,  4, 28, 14,  7,  5,
+		                                         34, 40, 11, 38, 36, 12, 49};
 	}
 	else if (num_nodes >= 40)
 	{
@@ -289,10 +289,10 @@ seed9_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 30)
 	{
 		// random rectangle with 30 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{15, 25, 26, 24, 20, 17, 22,
-		                                          3,  9, 28,  6, 13,  7, 27};
-		dst_node_vec = std::vector<unsigned int>{14,  8,  0, 11,  2, 18, 12,
-		                                         21,  1, 10, 19, 16, 29,  5};
+		src_node_vec = std::vector<unsigned int>{17, 16,  7, 20, 18, 26, 22,
+		                                         10,  4, 19,  8, 21,  3, 29};
+		dst_node_vec = std::vector<unsigned int>{25, 28,  5,  2, 14,  0, 13,
+		                                          6, 23,  1, 24, 15, 11, 27};
 	}
 	else
 	{
@@ -340,10 +340,10 @@ seed10_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 50)
 	{
 		// random rectangle with 50 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{ 0, 27,  6, 22, 38, 37,  1,
-		                                         19, 44, 29, 16, 41, 13,  5};
-		dst_node_vec = std::vector<unsigned int>{43, 25, 39, 23, 47,  9, 32,
-		                                         30, 42, 28, 36,  3, 34, 15};
+		src_node_vec = std::vector<unsigned int>{ 5, 14, 25, 32, 21, 26, 38,
+		                                         45, 37,  1, 48, 35, 24,  2};
+		dst_node_vec = std::vector<unsigned int>{28, 17, 44, 30,  4, 36,  0,
+		                                         20, 19, 43, 10, 15,  3, 34};
 	}
 	else if (num_nodes >= 40)
 	{
@@ -354,10 +354,10 @@ seed10_src_dst_pair(const int num_nodes,
 	else if (num_nodes >= 30)
 	{
 		// random rectangle with 30 nodes — 14 flows (first 7 = light load, all 14 = heavy load)
-		src_node_vec = std::vector<unsigned int>{23, 21,  4, 26, 11, 16, 17,
-		                                         15,  0,  5, 27, 28, 25, 20};
-		dst_node_vec = std::vector<unsigned int>{24, 12, 14, 18, 10,  7,  3,
-		                                          9, 19, 29,  2,  8, 13, 22};
+		src_node_vec = std::vector<unsigned int>{ 5, 27,  4,  8, 20, 13,  3,
+		                                         17,  7,  2,  1, 18, 11, 14};
+		dst_node_vec = std::vector<unsigned int>{21, 22, 12, 15, 29,  0, 28,
+		                                         10, 26,  6, 16, 23, 24,  9};
 	}
 	else
 	{

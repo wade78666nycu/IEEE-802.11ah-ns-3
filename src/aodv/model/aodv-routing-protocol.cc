@@ -1584,6 +1584,16 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 	uint8_t hop = rreqHeader.GetHopCount() + 1;
 	rreqHeader.SetHopCount(hop);
 
+	if (!m_useEttRouting)
+	{
+		uint32_t bestChannel = static_cast<uint32_t>(m_ipv4->GetInterfaceForAddress(receiver));
+		NS_LOG_DEBUG("RecvRequest ETT accumulate: origin=" << origin << " id=" << id << " sender=" << src
+						 << " bestChannel=" << bestChannel
+						 << " bestLinkEtt=" << 1.0
+						 << " cumulative(before=" << static_cast<double>(hop - 1)
+						 << ", after=" << static_cast<double>(hop) << ")");
+	}
+
 	/*
 	 *  When the reverse route is created or updated, the following actions on the route are also carried out:
 	 *  1. the Originator Sequence Number from the RREQ is compared to the corresponding destination sequence number
@@ -1694,6 +1704,12 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 		m_routingTable.LookupRoute(origin, toOrigin);
 		if (!m_useEttRouting)
 		{
+			const std::string key = BuildRreqKey(origin, id);
+			NS_LOG_DEBUG("Destination delayed-reply timer fired: key=" << key
+							 << " selected cumulative ETT=" << static_cast<double>(rreqHeader.GetHopCount())
+							 << " nextHop=" << toOrigin.GetNextHop()
+							 << " nextHopChannel=" << static_cast<uint32_t>(toOrigin.GetNextHopChannel())
+							 << " finalDst=" << rreqHeader.GetDst());
 			SendReply(rreqHeader, toOrigin);
 			return;
 		}
@@ -1761,6 +1777,12 @@ RoutingProtocol::RecvRequest(Ptr<Packet> p, Ipv4Address receiver, Ipv4Address sr
 			if (m_enableIntermediateRrep && !rreqHeader.GetDestinationOnly() && toDst.GetFlag() == VALID)
 			{
 				m_routingTable.LookupRoute(origin, toOrigin);
+				const std::string key = BuildRreqKey(origin, id);
+				NS_LOG_DEBUG("Destination delayed-reply timer fired: key=" << key
+								 << " selected cumulative ETT=" << static_cast<double>(rreqHeader.GetHopCount())
+								 << " nextHop=" << toOrigin.GetNextHop()
+								 << " nextHopChannel=" << static_cast<uint32_t>(toOrigin.GetNextHopChannel())
+								 << " finalDst=" << rreqHeader.GetDst());
 				SendReplyByIntermediateNode(toDst, toOrigin, rreqHeader.GetGratiousRrep());
 				return;
 			}

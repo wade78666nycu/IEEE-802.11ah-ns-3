@@ -21,6 +21,7 @@ RREQ_RE = re.compile(
 SELECTED_RE = re.compile(
     r"Destination delayed-reply timer fired: key=([0-9.]+)\|(\d+) "
     r"selected cumulative ETT=([\d.eE+\-]+) nextHop=([0-9.]+)(?: nextHopChannel=(\d+))?"
+    r"(?: finalDst=([0-9.]+))?"
 )
 PUSH_RE = re.compile(r"\b(src_node_vec|dst_node_vec)\.emplace_back\((\d+)\)")
 INIT_RE = re.compile(r"\b(src_node_vec|dst_node_vec)\s*=\s*\{([^}]*)\}", re.S)
@@ -140,8 +141,13 @@ def parse_log(log_file):
                 origin_ip = selected_match.group(1)
                 rreq_id = selected_match.group(2)
                 key = (origin_ip, rreq_id)
+                final_dst_ip = selected_match.group(6)
+                final_dst_node = ip_to_node_id(final_dst_ip) if final_dst_ip else None
+                replier_node = prefix["node_id"]
                 selected_path[key] = {
-                    "dst_node": prefix["node_id"],
+                    "dst_node": final_dst_node if final_dst_node is not None else replier_node,
+                    "replier_node": replier_node,
+                    "reply_recv_node": replier_node,
                     "selected_ett": float(selected_match.group(3)),
                     "next_hop_ip": selected_match.group(4),
                     "next_hop_id": ip_to_node_id(selected_match.group(4)),
@@ -217,11 +223,14 @@ def build_analyses(rreq_graph, selected_path):
         all_hops = rreq_graph.get(key, [])
         src_node = ip_to_node_id(origin_ip)
         dst_node = selected["dst_node"]
+        reply_recv_node = selected.get("reply_recv_node", dst_node)
         selected_ett = selected["selected_ett"]
 
-        selected_hop, dst_candidates = find_selected_hop(all_hops, dst_node, selected_ett)
+        selected_hop, dst_candidates = find_selected_hop(all_hops, reply_recv_node, selected_ett)
         path_entries = backtrack_path_entries(all_hops, selected_hop)
         node_path = build_node_path(path_entries)
+        if node_path and dst_node != reply_recv_node and node_path[-1] != dst_node:
+            node_path.append(dst_node)
 
         analyses.append(
             {

@@ -91,7 +91,7 @@ print_summary() {
 
     for seed in $seeds_list; do
         for traffic in light heavy; do
-            for case_key in 01_std_aodv 03_full_power_no_chswitch 06_gradpc_no_chswitch 02_full_power 04_gradpc 05_gradpc_prefer_low; do
+            for case_key in 01_std_aodv 03_full_power_no_chswitch 02_full_power 06_gradpc_no_chswitch 04_gradpc 05_gradpc_prefer_low; do
                 local f="$RESULTS_DIR/${seed}_${traffic}_${case_key}"
 
                 local pdr thru delay rerr epp actwin
@@ -132,15 +132,15 @@ launch_seed() {
     local ch="--seed=$seed --num_nodes=$NUM_NODES --num_flows=14 --data_rate=30Kbps --send_packet_num=500 --show_log=false --export_node_info=false"
 
     run_case_bg $seed light "01_std_aodv"          $cl --enable_hello=false --device_num=1
-    run_case_bg $seed light "02_full_power"         $cl --enable_hello=true --enable_power_control=false --tx_power=12
-    run_case_bg $seed light "03_full_power_no_chswitch" $cl --enable_hello=true --enable_power_control=false --tx_power=12 --enable_channel_switch_on_retry=false
+    run_case_bg $seed light "02_full_power"         $cl --enable_hello=true --enable_power_control=false --tx_power=15
+    run_case_bg $seed light "03_full_power_no_chswitch" $cl --enable_hello=true --enable_power_control=false --tx_power=15 --enable_channel_switch_on_retry=false
     run_case_bg $seed light "04_gradpc"             $cl --enable_hello=true --enable_power_control=true
     run_case_bg $seed light "05_gradpc_prefer_low"  $cl --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
     run_case_bg $seed light "06_gradpc_no_chswitch" $cl --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
 
     run_case_bg $seed heavy "01_std_aodv"          $ch --enable_hello=false --device_num=1
-    run_case_bg $seed heavy "02_full_power"         $ch --enable_hello=true --enable_power_control=false --tx_power=12
-    run_case_bg $seed heavy "03_full_power_no_chswitch" $ch --enable_hello=true --enable_power_control=false --tx_power=12 --enable_channel_switch_on_retry=false
+    run_case_bg $seed heavy "02_full_power"         $ch --enable_hello=true --enable_power_control=false --tx_power=15
+    run_case_bg $seed heavy "03_full_power_no_chswitch" $ch --enable_hello=true --enable_power_control=false --tx_power=15 --enable_channel_switch_on_retry=false
     run_case_bg $seed heavy "04_gradpc"             $ch --enable_hello=true --enable_power_control=true
     run_case_bg $seed heavy "05_gradpc_prefer_low"  $ch --enable_hello=true --enable_power_control=true --prefer_low_power_channel=true
     run_case_bg $seed heavy "06_gradpc_no_chswitch" $ch --enable_hello=true --enable_power_control=true --enable_channel_switch_on_retry=false
