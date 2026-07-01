@@ -41,16 +41,16 @@ main(int argc, char* argv[])
 {
     ScenarioConfig cfg;
     cfg.scenario_name = "grid";
-    cfg.rand_seed = 9;
+    cfg.rand_seed = 6;
 
     unsigned int pairs_per_row = 3;   // total pairs = pairs_per_row^2
-    double pair_spacing = 400.0;      // distance between adjacent pairs (m)
+    double pair_spacing = 100.0;      // distance between adjacent pairs (m)
     double link_distance = 60.0;      // src->dst distance within a pair (m)
 
     // Saturation defaults: continuous CBR (no inter-round pause) and enough
     // packets to keep every flow backlogged for the whole ~58 s data window.
-    cfg.data_rate_str = "2Mbps";
-    cfg.send_packet_num = 60000;
+    cfg.data_rate_str = "500Kbps";
+    cfg.send_packet_num = 5000;
     cfg.max_packet_num_per_round = 1000000;
 
     CommandLine cmd;

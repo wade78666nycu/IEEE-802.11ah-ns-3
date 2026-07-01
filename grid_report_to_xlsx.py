@@ -19,7 +19,7 @@ except ImportError:
 
 REPORT = Path(__file__).parent / "output_file" / "grid_comparison_report.txt"
 
-HEADERS = ["Spacing", "Rate", "Mode", "PDR(%)", "Thru(Kbps)", "AvgDly(ms)", "RERR", "Energy(J)"]
+HEADERS = ["Spacing", "Rate", "Mode", "PDR(%)", "Thru(Kbps)", "Energy(J)"]
 
 HDR_FILL   = PatternFill("solid", fgColor="2E4057")   # dark blue
 FULL_FILL  = PatternFill("solid", fgColor="EBF5FB")   # light blue  -> full power
@@ -37,7 +37,7 @@ def parse_report(path: Path) -> list[dict]:
         if not line or line.startswith("─") or line.startswith("Spacing"):
             continue
         parts = line.split()
-        if len(parts) < 8:
+        if len(parts) < 6:
             continue
         try:
             rows.append({
@@ -46,9 +46,7 @@ def parse_report(path: Path) -> list[dict]:
                 "Mode":       parts[2],
                 "PDR(%)":     float(parts[3]),
                 "Thru(Kbps)": float(parts[4]),
-                "AvgDly(ms)": float(parts[5]),
-                "RERR":       int(parts[6]),
-                "Energy(J)":  float(parts[7]),
+                "Energy(J)":  float(parts[5]),
             })
         except (ValueError, IndexError):
             continue
@@ -81,7 +79,7 @@ def write_xlsx(rows: list[dict], output: Path):
             if key == "Mode" and row["Mode"] == "gradpc":
                 cell.font = Font(bold=True)
 
-    widths = [9, 9, 9, 9, 12, 12, 7, 11]
+    widths = [9, 9, 9, 9, 12, 11]
     for col, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(col)].width = w
 

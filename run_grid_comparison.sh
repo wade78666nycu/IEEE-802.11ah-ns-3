@@ -12,8 +12,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RESULTS_DIR="$ROOT_DIR/output_file/.grid_results"
 
-SPACINGS="300 400 600 800"
-RATES="500Kbps 1Mbps 2Mbps"
+SPACINGS="100 600 1200"
+RATES="500Kbps"
 PAIRS_PER_ROW=3
 LINK_DISTANCE=60
 USE_OPTIMIZED=false
@@ -72,13 +72,12 @@ run_case_bg() {
         cd "$tmpdir"
         LD_LIBRARY_PATH="$LIB_DIR" "$BIN" --scenario_name="$sname" $common $(mode_args "$mode") > /dev/null 2>&1
         local summary="$tmpdir/output_file/${sname}/${sname}_run_summary.txt"
-        grep -E "^(pdr_percent|throughput_bps|avg_delay_ms|total_rerr_sent|total_energy_j)=" \
+        grep -E "^(pdr_percent|throughput_bps|total_energy_j)=" \
             "$summary" 2>/dev/null > "$result_file" || true
         rm -rf "$tmpdir" 2>/dev/null || true
         echo "  ✓ [spacing=$spacing rate=$rate mode=$mode] done"
     ) &
 }
-
 extract() { grep "^${2}=" "${1}" 2>/dev/null | cut -d= -f2 || echo "N/A"; }
 fmt() {
     local val="$1" f="$2"
@@ -87,24 +86,21 @@ fmt() {
 
 print_summary() {
     local header sep body
-    header=$(printf "%-9s %-9s %-8s %8s %11s %11s %7s %10s\n" \
-        "Spacing" "Rate" "Mode" "PDR(%)" "Thru(Kbps)" "AvgDly(ms)" "RERR" "Energy(J)")
+    header=$(printf "%-9s %-9s %-8s %8s %11s %10s\n" \
+        "Spacing" "Rate" "Mode" "PDR(%)" "Thru(Kbps)" "Energy(J)")
     sep="$(printf '%.0s─' {1..78})"
     body=""
-
-    for spacing in $SPACINGS; do
-        for rate in $RATES; do
-            for mode in full gradpc; do
+    for mode in full gradpc; do
+        for spacing in $SPACINGS; do
+            for rate in $RATES; do
                 local f="$RESULTS_DIR/${spacing}_${rate}_${mode}"
                 local pdr thru delay rerr energy
                 pdr=$(fmt   "$(extract "$f" "pdr_percent")"      "%.2f")
                 thru=$(fmt  "$(extract "$f" "throughput_bps")"   "%.2f")
-                delay=$(fmt "$(extract "$f" "avg_delay_ms")"     "%.2f")
-                rerr=$(extract "$f" "total_rerr_sent")
                 energy=$(fmt "$(extract "$f" "total_energy_j")"  "%.4f")
                 [[ "$thru" != "N/A" ]] && thru=$(awk "BEGIN{printf \"%.2f\", $thru/1000}")
-                body+=$(printf "%-9s %-9s %-8s %8s %11s %11s %7s %10s\n" \
-                    "$spacing" "$rate" "$mode" "$pdr" "$thru" "$delay" "$rerr" "$energy")
+                body+=$(printf "%-9s %-9s %-8s %8s %11s %10s\n" \
+                    "$spacing" "$rate" "$mode" "$pdr" "$thru" "$energy")
                 body+=$'\n'
             done
             body+=$'\n'   # blank line between rate groups for readability
